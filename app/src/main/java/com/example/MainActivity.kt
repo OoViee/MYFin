@@ -141,6 +141,8 @@ fun FinancialWorkspaceScreen(
     val aiState by viewModel.aiState.collectAsState()
 
     var activeTab by remember { mutableStateOf(0) }
+    var activeNavigationMenuTab by remember { mutableStateOf("home") }
+    var userName by remember { mutableStateOf("Marcus Aurelius") }
     var userInputText by remember { mutableStateOf("") }
     var showQuickSimMicSheet by remember { mutableStateOf(false) }
 
@@ -199,12 +201,21 @@ fun FinancialWorkspaceScreen(
                 onBack = { currentCategoryPage = null }
             )
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
+            Scaffold(
+                containerColor = NavyBg
+            ) { innerScaffoldPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = innerScaffoldPadding.calculateBottomPadding())
+                ) {
+                    if (activeNavigationMenuTab == "home") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp)
+                        ) {
             // BRAND HEADER
             Row(
                 modifier = Modifier
@@ -224,7 +235,7 @@ fun FinancialWorkspaceScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Good Evening, Marcus",
+                        text = "Good Evening, $userName",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Normal,
                         color = Color(0xFFE7E5E4), // Stone 200 elegant serif
@@ -806,7 +817,7 @@ fun FinancialWorkspaceScreen(
                 }
             }
 
-            // SYSTEM FEEDER & QUICK OPTIONS CARD
+            // QUICK OPTION LOG TEMPLATES CARD
             Card(
                 shape = RoundedCornerShape(24.dp),
                 border = BorderStroke(1.dp, Color(0xFF292524)),
@@ -817,7 +828,7 @@ fun FinancialWorkspaceScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "🔧 SYSTEM FEEDER & QUICK OPTIONS",
+                        text = "⚡ ONE-TAP QUICK LOG TEMPLATES",
                         fontSize = 11.sp,
                         color = NeonGreen,
                         fontWeight = FontWeight.Bold,
@@ -825,61 +836,14 @@ fun FinancialWorkspaceScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Instantly 'feed' the graphs with robust sample transaction history, or tap predefined templates to log immediately.",
+                        text = "Draft typical financial entries instantly with a single tap. Records can be removed one-by-one inside their respective workspace tabs.",
                         fontSize = 11.sp,
                         color = TextGray
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    // Feed & Clear Buttons Row
                     val context = LocalContext.current
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                viewModel.seedSampleDatabase()
-                                Toast.makeText(context, "Simulated database feed successfully injected!", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981).copy(alpha = 0.15f)),
-                            border = BorderStroke(1.dp, NeonGreen),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(vertical = 10.dp)
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Feed Database", color = NeonGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        Button(
-                            onClick = {
-                                viewModel.clearAllDatabase()
-                                Toast.makeText(context, "All tables cleared successfully!", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.15f)),
-                            border = BorderStroke(1.dp, DangerRed),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(vertical = 10.dp)
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = DangerRed, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Clear All", color = DangerRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Text(
-                        text = "ONE-TAP PREDEFINED QUICK LOGS",
-                        fontSize = 10.sp,
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
 
                     // Scrollable list of typical predefined transactions
                     Row(
@@ -1176,7 +1140,118 @@ fun FinancialWorkspaceScreen(
                     }
                 }
             }
-        }
+                            Spacer(modifier = Modifier.height(100.dp))
+                        } // CLOSES home page column
+                    } else if (activeNavigationMenuTab == "commitments") {
+                        CommitmentsWorkspacePage(
+                            emiLoans = emiLoans,
+                            sipRecords = sipRecords,
+                            debtSplits = debtSplits,
+                            totalEmi = totalEmi,
+                            totalSip = totalSip,
+                            totalDebt = totalDebt,
+                            currencyFormatter = currencyFormatter,
+                            viewModel = viewModel,
+                            onTriggerManual = { type -> activeManualDialog = type }
+                        )
+                    } else if (activeNavigationMenuTab == "user") {
+                        UserProfileWorkspacePage(
+                            currencyFormatter = currencyFormatter,
+                            totalIncome = totalIncome,
+                            totalExpense = totalExpense,
+                            totalCredit = totalCredit,
+                            totalSip = totalSip,
+                            trueDisposable = trueDisposable,
+                            catExps = catExps
+                        )
+                    } else if (activeNavigationMenuTab == "settings") {
+                        SettingsWorkspacePage(
+                            viewModel = viewModel
+                        )
+                    }
+
+                    // BEAUTIFUL FLOATING GLASS ISLAND NAVIGATION TAB
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 20.dp, start = 16.dp, end = 16.dp)
+                            .fillMaxWidth()
+                            .widthIn(max = 500.dp)
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xEE161616),
+                                        Color(0xFB0F0F0F)
+                                    )
+                                )
+                            )
+                            .border(
+                                BorderStroke(
+                                    width = 1.dp,
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0x33FFFFFF),
+                                            Color(0x0EFFFFFF)
+                                        )
+                                    )
+                                ),
+                                shape = RoundedCornerShape(32.dp)
+                            )
+                            .padding(vertical = 8.dp, horizontal = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val items = listOf(
+                                Triple("home", Icons.Default.Home, "Dashboard"),
+                                Triple("commitments", Icons.Default.DateRange, "Commitments"),
+                                Triple("user", Icons.Default.Person, "Profile"),
+                                Triple("settings", Icons.Default.Settings, "Settings")
+                            )
+
+                            items.forEach { (route, icon, label) ->
+                                val isSelected = activeNavigationMenuTab == route
+                                val tintColor = if (isSelected) NeonGreen else TextGray
+                                val bgAlpha = if (isSelected) 0.15f else 0.0f
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1.5f)
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(if (isSelected) NeonGreen.copy(alpha = bgAlpha) else Color.Transparent)
+                                        .clickable { activeNavigationMenuTab = route }
+                                        .padding(vertical = 8.dp)
+                                        .testTag("nav_item_$route"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = label,
+                                            tint = tintColor,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = label,
+                                            color = tintColor,
+                                            fontSize = 9.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            letterSpacing = 0.4.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         } // CLOSES THE conditional "else" block
 
         // VOICE SIMULATOR PROFILE MODAL
@@ -2451,6 +2526,581 @@ fun CategoryWorkspacePage(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun CommitmentsWorkspacePage(
+    emiLoans: List<EmiLoanEntity>,
+    sipRecords: List<SipEntity>,
+    debtSplits: List<DebtSplitEntity>,
+    totalEmi: Double,
+    totalSip: Double,
+    totalDebt: Double,
+    currencyFormatter: NumberFormat,
+    viewModel: WealthPulseViewModel,
+    onTriggerManual: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Core Header
+        Text(
+            text = "RECURRING SYSTEM COMMITMENTS",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C), // Stone 500
+            letterSpacing = 2.sp
+        )
+        Text(
+            text = "Structured Liabilities & Assets",
+            fontSize = 24.sp,
+            fontFamily = FontFamily.Serif,
+            color = TextWhite,
+            fontWeight = FontWeight.Light,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Aggregated Dashboard Summary
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "RECURRING OUTFLOW RUNRATE /mo",
+                    fontSize = 11.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = currencyFormatter.format(totalEmi + totalSip),
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Light,
+                    color = AccentOrange,
+                    fontFamily = FontFamily.Serif
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("EMI RECURRING", fontSize = 10.sp, color = TextGray)
+                        Text(currencyFormatter.format(totalEmi), fontSize = 14.sp, color = AccentOrange, fontWeight = FontWeight.Bold)
+                    }
+                    Column {
+                        Text("SIP SCHEDULING", fontSize = 10.sp, color = TextGray)
+                        Text(currencyFormatter.format(totalSip), fontSize = 14.sp, color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold)
+                    }
+                    Column {
+                        Text("ACTIVE LEDGER", fontSize = 10.sp, color = TextGray)
+                        Text(currencyFormatter.format(totalDebt), fontSize = 14.sp, color = Color(0xFFF43F5E), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Section 1: Active Loan EMIs
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "📊 ACTIVE EMIs & LOANS LIABILITIES",
+                fontSize = 11.sp,
+                color = TextGray,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+            TextButton(
+                onClick = { onTriggerManual("EMI") },
+                modifier = Modifier.testTag("emi_tab_manual_button")
+            ) {
+                Text("+ New EMI", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (emiLoans.isEmpty()) {
+            EmptyStatePlaceholder("No live structural liabilities or EMI plans registered.")
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                emiLoans.forEach { emi ->
+                    TransactionItemCard(
+                        title = emi.description,
+                        subtitle = "Remaining: ${emi.remainingMonths}/${emi.totalTenureMonths} months left",
+                        amount = "${currencyFormatter.format(emi.amount)}/mo",
+                        onDelete = { viewModel.deleteEmi(emi.id) },
+                        colorAccent = AccentOrange,
+                        progressFraction = emi.remainingMonths.toFloat() / emi.totalTenureMonths.toFloat()
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Section 2: SIP Mutual Funds
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "📈 SIP MUTUAL FUNDS CALENDAR",
+                fontSize = 11.sp,
+                color = TextGray,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+            TextButton(
+                onClick = { onTriggerManual("SIP") },
+                modifier = Modifier.testTag("sip_tab_manual_button")
+            ) {
+                Text("+ New SIP", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (sipRecords.isEmpty()) {
+            EmptyStatePlaceholder("No active automated SIP portfolio schedules configured.")
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                sipRecords.forEach { sip ->
+                    TransactionItemCard(
+                        title = sip.description,
+                        subtitle = "Auto-pay day: ${sip.dayOfMonth}th monthly | Type: ${sip.investmentCategory}",
+                        amount = "${currencyFormatter.format(sip.amount)}/mo",
+                        onDelete = { viewModel.deleteSip(sip.id) },
+                        colorAccent = Color(0xFF3B82F6)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Section 3: Peer Lending Debt Splits
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "👥 PEER SPLITS & LENT BALANCES (LENT/BORROW)",
+                fontSize = 11.sp,
+                color = TextGray,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+            TextButton(
+                onClick = { onTriggerManual("DEBT") },
+                modifier = Modifier.testTag("split_tab_manual_button")
+            ) {
+                Text("+ Record Split", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (debtSplits.isEmpty()) {
+            EmptyStatePlaceholder("No lend/borrow peer ratios or Flatmates balances active.")
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                debtSplits.forEach { debt ->
+                    TransactionItemCard(
+                        title = debt.description,
+                        subtitle = "Subject: ${debt.debtPersonInvolved} | Group: ${debt.groupName} | Type: ${if (debt.isGroupSplit) "Flat Group" else "Personal Peer"}",
+                        amount = currencyFormatter.format(debt.amount),
+                        onDelete = { viewModel.deleteDebt(debt.id) },
+                        colorAccent = Color(0xFFF43F5E)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun UserProfileWorkspacePage(
+    currencyFormatter: NumberFormat,
+    totalIncome: Double,
+    totalExpense: Double,
+    totalCredit: Double,
+    totalSip: Double,
+    trueDisposable: Double,
+    catExps: Double
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Core Header
+        Text(
+            text = "Marcus Aurelius",
+            fontSize = 24.sp,
+            fontFamily = FontFamily.Serif,
+            color = TextWhite,
+            fontWeight = FontWeight.Light,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
+        )
+        Text(
+            text = "👤 INTEGRATED FINANCIAL IDENTITY",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C), // Stone 500
+            letterSpacing = 2.sp,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Profile Card
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(NeonGreen.copy(alpha = 0.15f))
+                        .border(1.dp, NeonGreen.copy(alpha = 0.4f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("MA", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NeonGreen)
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text("Marcus Aurelius", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                    Text("Analyst Level: Pro Wealth Planner", fontSize = 11.sp, color = TextGray)
+                    Text("ID: WP-99-MARCUS", fontSize = 10.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Section: Live Targets & Goals
+        Text(
+            text = "🏁 STRATEGIC FINANCIAL GOALS",
+            fontSize = 11.sp,
+            color = TextGray,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        )
+
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Goal 1: Savings Goal
+                val savingsRate = if (totalIncome > 0) ((totalIncome - totalExpense - totalCredit) / totalIncome) * 100 else 0.0
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Active Savings Ratio", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("${String.format("%.1f", savingsRate)}% / 40.0%", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { (savingsRate.toFloat() / 40f).coerceIn(0f, 1f) },
+                        color = NeonGreen,
+                        trackColor = Color(0xFF292524),
+                        modifier = Modifier.fillMaxWidth().clip(CircleShape)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Goal 2: Food limits alert
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Monthly Dining Budget", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("${currencyFormatter.format(catExps)} / ₹15,000", fontSize = 12.sp, color = AccentOrange, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    LinearProgressIndicator(
+                        progress = { (catExps.toFloat() / 15000f).coerceIn(0f, 1f) },
+                        color = AccentOrange,
+                        trackColor = Color(0xFF292524),
+                        modifier = Modifier.fillMaxWidth().clip(CircleShape)
+                    )
+                }
+            }
+        }
+
+        // Section: Risk appetite and smart metrics
+        Text(
+            text = "⚡ ADVISORY METRICS",
+            fontSize = 11.sp,
+            color = TextGray,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF161616))
+                    .border(1.dp, Color(0xFF292524), RoundedCornerShape(16.dp))
+                    .padding(12.dp)
+            ) {
+                Column {
+                    Text("RISK INDEX", fontSize = 10.sp, color = TextGray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("GROWTH-MOD", fontSize = 14.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    Text("Moderate equity allocation", fontSize = 10.sp, color = TextGray)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF161616))
+                    .border(1.dp, Color(0xFF292524), RoundedCornerShape(16.dp))
+                    .padding(12.dp)
+            ) {
+                Column {
+                    Text("LIQUIDITY RUNWAY", fontSize = 10.sp, color = TextGray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("STABLE STATS", fontSize = 14.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    Text("Disposable run rate healthy", fontSize = 10.sp, color = TextGray)
+                }
+            }
+        }
+
+        // Interactive profile configuration info section
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "🏆 LEADERBOARD ACHIEVEMENTS",
+                    fontSize = 11.sp,
+                    color = NeonGreen,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                BulletTextItem("🌟 Wealth Pillar: Saving streak successfully sustained for 6 weeks.")
+                BulletTextItem("🛡️ Debt Sentinel: Active monthly utility autopay and no unpaid credit arrears.")
+                BulletTextItem("💡 AI Co-pilot active: AI Voice Analyzer logs compiled over 3 sessions.")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun SettingsWorkspacePage(
+    viewModel: WealthPulseViewModel
+) {
+    var currencyMode by remember { mutableStateOf("INR") }
+    var overspendAlerts by remember { mutableStateOf(true) }
+    var highPrecisionParser by remember { mutableStateOf(true) }
+
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Core Header
+        Text(
+            text = "SYSTEM CONFIGURATOR",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C), // Stone 500
+            letterSpacing = 2.sp
+        )
+        Text(
+            text = "Settings, Database & Tools",
+            fontSize = 24.sp,
+            fontFamily = FontFamily.Serif,
+            color = TextWhite,
+            fontWeight = FontWeight.Light,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Preferences Card
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "APP USER PREFERENCES",
+                    fontSize = 11.sp,
+                    color = NeonGreen,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Option 1: Currency Preference Selection
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Regional Base Currency", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("Active formatting in Indian Rupee (₹)", fontSize = 11.sp, color = TextGray)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Button(
+                            onClick = { currencyMode = "INR"; Toast.makeText(context, "Base Currency: INR (₹)", Toast.LENGTH_SHORT).show() },
+                            colors = ButtonDefaults.buttonColors(containerColor = if (currencyMode == "INR") NeonGreen else Color(0xFF292524)),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp).testTag("currency_inr_button")
+                        ) {
+                            Text("INR (₹)", fontSize = 11.sp, color = if (currencyMode == "INR") NavyBg else TextWhite, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = { currencyMode = "USD"; Toast.makeText(context, "Base Currency: USD ($)", Toast.LENGTH_SHORT).show() },
+                            colors = ButtonDefaults.buttonColors(containerColor = if (currencyMode == "USD") NeonGreen else Color(0xFF292524)),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp).testTag("currency_usd_button")
+                        ) {
+                            Text("USD ($)", fontSize = 11.sp, color = if (currencyMode == "USD") NavyBg else TextWhite, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = Color(0xFF292524))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Option 2: Overspend alerts Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Smart Overspend Guard", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("Flag transaction limits with red indicators", fontSize = 11.sp, color = TextGray)
+                    }
+                    Switch(
+                        checked = overspendAlerts,
+                        onCheckedChange = { overspendAlerts = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = NeonGreen),
+                        modifier = Modifier.testTag("overspend_switch")
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = Color(0xFF292524))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Option 3: Precision Toggle Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("AI Smart Extraction Strictness", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text("Apply rigorous multi-field context evaluation", fontSize = 11.sp, color = TextGray)
+                    }
+                    Switch(
+                        checked = highPrecisionParser,
+                        onCheckedChange = { highPrecisionParser = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = NeonGreen),
+                        modifier = Modifier.testTag("precision_switch")
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Technical System Diagnostics
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "🛠️ SYSTEM DIAGNOSTICS",
+                    fontSize = 11.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("SQLite Engines: Active (Room Persistence Library)", fontSize = 12.sp, color = TextWhite)
+                Text("AI Parser: Google Gemini-Flash Web Orchestration (Model 3.5)", fontSize = 12.sp, color = TextWhite)
+                Text("Telemetry Client: Operational on DeX / Foldable Adaptive layout", fontSize = 12.sp, color = TextWhite)
+                Text("Application Version: WealthPulse Core v2.4.2", fontSize = 12.sp, color = NeonGreen)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+fun BulletTextItem(text: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(top = 6.dp, end = 8.dp)
+                .size(4.dp)
+                .clip(CircleShape)
+                .background(NeonGreen)
+        )
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            color = TextWhite
+        )
     }
 }
 
