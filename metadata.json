@@ -1,0 +1,6 @@
+{
+  "name": "WealthPulse",
+  "description": "WealthPulse is an all-in-one financial orchestration ecosystem. It features smart transaction parsing and analytics powered by Gemini AI across 5 modules: Expense, Credit, EMI, Split and Payday.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
