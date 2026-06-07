@@ -1142,27 +1142,29 @@ fun FinancialWorkspaceScreen(
             }
                             Spacer(modifier = Modifier.height(100.dp))
                         } // CLOSES home page column
-                    } else if (activeNavigationMenuTab == "commitments") {
-                        CommitmentsWorkspacePage(
+                    } else if (activeNavigationMenuTab == "emi") {
+                        EmiWorkspacePage(
                             emiLoans = emiLoans,
-                            sipRecords = sipRecords,
-                            debtSplits = debtSplits,
                             totalEmi = totalEmi,
-                            totalSip = totalSip,
-                            totalDebt = totalDebt,
                             currencyFormatter = currencyFormatter,
                             viewModel = viewModel,
                             onTriggerManual = { type -> activeManualDialog = type }
                         )
-                    } else if (activeNavigationMenuTab == "user") {
-                        UserProfileWorkspacePage(
-                            currencyFormatter = currencyFormatter,
-                            totalIncome = totalIncome,
-                            totalExpense = totalExpense,
-                            totalCredit = totalCredit,
+                    } else if (activeNavigationMenuTab == "sip") {
+                        SipWorkspacePage(
+                            sipRecords = sipRecords,
                             totalSip = totalSip,
-                            trueDisposable = trueDisposable,
-                            catExps = catExps
+                            currencyFormatter = currencyFormatter,
+                            viewModel = viewModel,
+                            onTriggerManual = { type -> activeManualDialog = type }
+                        )
+                    } else if (activeNavigationMenuTab == "credit") {
+                        CreditWorkspacePage(
+                            creditExpenses = creditExpenses,
+                            totalCredit = totalCredit,
+                            currencyFormatter = currencyFormatter,
+                            viewModel = viewModel,
+                            onTriggerManual = { type -> activeManualDialog = type }
                         )
                     } else if (activeNavigationMenuTab == "settings") {
                         SettingsWorkspacePage(
@@ -1170,29 +1172,30 @@ fun FinancialWorkspaceScreen(
                         )
                     }
 
-                    // BEAUTIFUL FLOATING GLASS ISLAND NAVIGATION TAB
+                    // BEAUTIFUL FLOATING GLASS ISLAND NAVIGATION TAB WITHOUT CLIPPING & HIGH-FIDELITY GLASSMOPHISM
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 20.dp, start = 16.dp, end = 16.dp)
+                            .navigationBarsPadding()
+                            .padding(bottom = 12.dp, start = 12.dp, end = 12.dp)
                             .fillMaxWidth()
-                            .widthIn(max = 500.dp)
+                            .widthIn(max = 520.dp)
                             .clip(RoundedCornerShape(32.dp))
                             .background(
                                 Brush.verticalGradient(
                                     colors = listOf(
-                                        Color(0xEE161616),
-                                        Color(0xFB0F0F0F)
+                                        Color(0xCC0C0A09), // Highly translucent stone dark
+                                        Color(0xE60F0C0A)
                                     )
                                 )
                             )
                             .border(
                                 BorderStroke(
-                                    width = 1.dp,
+                                    width = 1.2.dp,
                                     brush = Brush.verticalGradient(
                                         colors = listOf(
-                                            Color(0x33FFFFFF),
-                                            Color(0x0EFFFFFF)
+                                            Color(0x40FFFFFF), // Ultra-fine frosted border edges
+                                            Color(0x06FFFFFF)
                                         )
                                     )
                                 ),
@@ -1206,24 +1209,30 @@ fun FinancialWorkspaceScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val items = listOf(
-                                Triple("home", Icons.Default.Home, "Dashboard"),
-                                Triple("commitments", Icons.Default.DateRange, "Commitments"),
-                                Triple("user", Icons.Default.Person, "Profile"),
+                                Triple("home", Icons.Default.Home, "Home"),
+                                Triple("emi", Icons.Default.AccountBox, "EMI"),
+                                Triple("sip", Icons.Default.DateRange, "SIP"),
+                                Triple("credit", Icons.Default.Send, "Credit"),
                                 Triple("settings", Icons.Default.Settings, "Settings")
                             )
 
                             items.forEach { (route, icon, label) ->
                                 val isSelected = activeNavigationMenuTab == route
                                 val tintColor = if (isSelected) NeonGreen else TextGray
-                                val bgAlpha = if (isSelected) 0.15f else 0.0f
+                                val bgAlpha = if (isSelected) 0.12f else 0.0f
 
                                 Box(
                                     modifier = Modifier
-                                        .weight(1.5f)
+                                        .weight(1f)
                                         .clip(RoundedCornerShape(20.dp))
                                         .background(if (isSelected) NeonGreen.copy(alpha = bgAlpha) else Color.Transparent)
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (isSelected) NeonGreen.copy(alpha = 0.25f) else Color.Transparent,
+                                            shape = RoundedCornerShape(20.dp)
+                                        )
                                         .clickable { activeNavigationMenuTab = route }
-                                        .padding(vertical = 8.dp)
+                                        .padding(vertical = 10.dp)
                                         .testTag("nav_item_$route"),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -1235,7 +1244,7 @@ fun FinancialWorkspaceScreen(
                                             imageVector = icon,
                                             contentDescription = label,
                                             tint = tintColor,
-                                            modifier = Modifier.size(22.dp)
+                                            modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
@@ -3101,6 +3110,693 @@ fun BulletTextItem(text: String) {
             fontSize = 12.sp,
             color = TextWhite
         )
+    }
+}
+
+@Composable
+fun EmiWorkspacePage(
+    emiLoans: List<EmiLoanEntity>,
+    totalEmi: Double,
+    currencyFormatter: java.text.NumberFormat,
+    viewModel: WealthPulseViewModel,
+    onTriggerManual: (String) -> Unit
+) {
+    var calcPrincipal by remember { mutableStateOf(1000000.0) } // 10 Lac default
+    var calcInterestRate by remember { mutableStateOf(8.5) }    // 8.5% default
+    var calcTenureYears by remember { mutableStateOf(15) }      // 15 years default
+
+    val emiCalculated = remember(calcPrincipal, calcInterestRate, calcTenureYears) {
+        val r = calcInterestRate / (12 * 100)
+        val n = calcTenureYears * 12
+        if (r == 0.0) calcPrincipal / n
+        else {
+            val power = Math.pow(1 + r, n.toDouble())
+            (calcPrincipal * r * power) / (power - 1)
+        }
+    }
+    val totalPayment = emiCalculated * (calcTenureYears * 12)
+    val totalInterest = totalPayment - calcPrincipal
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Page Title & Header
+        Text(
+            text = "STRUCTURAL LIABILITIES",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C),
+            letterSpacing = 2.sp
+        )
+        Text(
+            text = "EMI Loans Tracker",
+            fontSize = 24.sp,
+            fontFamily = FontFamily.Serif,
+            color = TextWhite,
+            fontWeight = FontWeight.Light,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Summary Card
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "TOTAL ACTIVE MONTHLY RUNRATE",
+                            fontSize = 11.sp,
+                            color = TextGray,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = currencyFormatter.format(totalEmi),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Light,
+                            color = AccentOrange,
+                            fontFamily = FontFamily.Serif
+                        )
+                    }
+                    TextButton(
+                        onClick = { onTriggerManual("EMI") },
+                        modifier = Modifier.testTag("emi_tab_manual_button")
+                    ) {
+                        Text("+ Add EMI", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Active Loans list
+        Text(
+            text = "📋 RUNNING EMIs & LIABILITY SCHEDULES",
+            fontSize = 11.sp,
+            color = TextGray,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        if (emiLoans.isEmpty()) {
+            EmptyStatePlaceholder("No live structural liabilities or loan EMIs registered.")
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 20.dp)
+            ) {
+                emiLoans.forEach { emi ->
+                    TransactionItemCard(
+                        title = emi.description,
+                        subtitle = "Loan tenure: ${emi.totalTenureMonths} mo | Class: ${emi.category}",
+                        amount = "${currencyFormatter.format(emi.amount)}/mo",
+                        onDelete = { viewModel.deleteEmi(emi.id) },
+                        colorAccent = AccentOrange
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // PREMIUM INTERACTIVE EMI LOAN AMORTIZATION CALCULATOR
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF101010)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 90.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "🧮 INTERACTIVE LOAN CALCULATOR",
+                    fontSize = 12.sp,
+                    color = NeonGreen,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Simulate mock running loans to calculate installment interest and plan debt paybacks.",
+                    fontSize = 11.sp,
+                    color = TextGray
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Principal Amount Slider
+                Text(
+                    text = "Principal Amount: ${currencyFormatter.format(calcPrincipal)}",
+                    fontSize = 13.sp,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Medium
+                )
+                Slider(
+                    value = calcPrincipal.toFloat(),
+                    onValueChange = { calcPrincipal = it.toDouble() },
+                    valueRange = 50000f..5000000f,
+                    steps = 99,
+                    colors = SliderDefaults.colors(
+                        thumbColor = NeonGreen,
+                        activeTrackColor = NeonGreen.copy(alpha = 0.5f),
+                        inactiveTrackColor = Color(0xFF262626)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Interest Rate Slider
+                Text(
+                    text = "Interest Rate: ${String.format("%.1f%%", calcInterestRate)} p.a.",
+                    fontSize = 13.sp,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Medium
+                )
+                Slider(
+                    value = calcInterestRate.toFloat(),
+                    onValueChange = { scale -> calcInterestRate = Math.round(scale * 10) / 10.0 },
+                    valueRange = 4f..24f,
+                    steps = 200,
+                    colors = SliderDefaults.colors(
+                        thumbColor = NeonGreen,
+                        activeTrackColor = NeonGreen.copy(alpha = 0.5f),
+                        inactiveTrackColor = Color(0xFF262626)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Tenure Slider
+                Text(
+                    text = "Tenure: $calcTenureYears Years (${calcTenureYears * 12} months)",
+                    fontSize = 13.sp,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Medium
+                )
+                Slider(
+                    value = calcTenureYears.toFloat(),
+                    onValueChange = { calcTenureYears = it.toInt() },
+                    valueRange = 1f..30f,
+                    steps = 29,
+                    colors = SliderDefaults.colors(
+                        thumbColor = NeonGreen,
+                        activeTrackColor = NeonGreen.copy(alpha = 0.5f),
+                        inactiveTrackColor = Color(0xFF262626)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Results Layout
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF18181A))
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("EST. MONTHLY EMI", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                        Text(currencyFormatter.format(emiCalculated), fontSize = 13.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("INTEREST PAYABLE", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                        Text(currencyFormatter.format(totalInterest), fontSize = 13.sp, color = AccentOrange, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("TOTAL COST", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                        Text(currencyFormatter.format(totalPayment), fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SipWorkspacePage(
+    sipRecords: List<SipEntity>,
+    totalSip: Double,
+    currencyFormatter: java.text.NumberFormat,
+    viewModel: WealthPulseViewModel,
+    onTriggerManual: (String) -> Unit
+) {
+    var sipAmount by remember { mutableStateOf(10000.0) }       // 10K default
+    var sipReturnRate by remember { mutableStateOf(12.0) }      // 12% default
+    var sipYears by remember { mutableStateOf(10) }            // 10 years default
+
+    val sipFutureValue = remember(sipAmount, sipReturnRate, sipYears) {
+        val i = sipReturnRate / (12 * 100)
+        val n = sipYears * 12
+        if (i == 0.0) sipAmount * n
+        else {
+            sipAmount * ((Math.pow(1 + i, n.toDouble()) - 1) / i) * (1 + i)
+        }
+    }
+    val totalSipInvested = sipAmount * (sipYears * 12)
+    val sipEstimatedWeatlh = sipFutureValue - totalSipInvested
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Page Title & Header
+        Text(
+            text = "AUTOMATED WEALTH CREATION",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C),
+            letterSpacing = 2.sp
+        )
+        Text(
+            text = "SIP Mutual Funds",
+            fontSize = 24.sp,
+            fontFamily = FontFamily.Serif,
+            color = TextWhite,
+            fontWeight = FontWeight.Light,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Summary Card
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "TOTAL MONTHLY SIP SAVINGS",
+                            fontSize = 11.sp,
+                            color = TextGray,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = currencyFormatter.format(totalSip),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Light,
+                            color = Color(0xFF3B82F6),
+                            fontFamily = FontFamily.Serif
+                        )
+                    }
+                    TextButton(
+                        onClick = { onTriggerManual("SIP") },
+                        modifier = Modifier.testTag("sip_tab_manual_button")
+                    ) {
+                        Text("+ Add SIP", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Active SIP list
+        Text(
+            text = "📋 RUNNING WEALTH COMPOUNDING SCHEDULES",
+            fontSize = 11.sp,
+            color = TextGray,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        if (sipRecords.isEmpty()) {
+            EmptyStatePlaceholder("No live mutual fund SIP savings portfolios configured.")
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 20.dp)
+            ) {
+                sipRecords.forEach { sip ->
+                    TransactionItemCard(
+                        title = sip.description,
+                        subtitle = "Auto-debit scheduled: ${sip.frequency} on ${sip.dayOfMonth}th",
+                        amount = "${currencyFormatter.format(sip.amount)}/mo",
+                        onDelete = { viewModel.deleteSip(sip.id) },
+                        colorAccent = Color(0xFF3B82F6)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // PREMIUM INTERACTIVE SIP FUTURE VALUE CALCULATOR
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF101010)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 90.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "📈 INTERACTIVE SIP WEALTH COMPOUNDER",
+                    fontSize = 12.sp,
+                    color = Color(0xFF3B82F6),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Plan compounding futures. Adjust variables in real-time to compute prospective wealth growth.",
+                    fontSize = 11.sp,
+                    color = TextGray
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Monthly Investment Slider
+                Text(
+                    text = "Monthly SIP: ${currencyFormatter.format(sipAmount)}",
+                    fontSize = 13.sp,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Medium
+                )
+                Slider(
+                    value = sipAmount.toFloat(),
+                    onValueChange = { sipAmount = it.toDouble() },
+                    valueRange = 500f..100000f,
+                    steps = 199,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF3B82F6),
+                        activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
+                        inactiveTrackColor = Color(0xFF262626)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Expected Return Slider
+                Text(
+                    text = "Expected Return Rate: ${String.format("%.1f%%", sipReturnRate)} p.a.",
+                    fontSize = 13.sp,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Medium
+                )
+                Slider(
+                    value = sipReturnRate.toFloat(),
+                    onValueChange = { scale -> sipReturnRate = Math.round(scale * 10) / 10.0 },
+                    valueRange = 5f..30f,
+                    steps = 250,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF3B82F6),
+                        activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
+                        inactiveTrackColor = Color(0xFF262626)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Years Slider
+                Text(
+                    text = "Investment Period: $sipYears Years",
+                    fontSize = 13.sp,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Medium
+                )
+                Slider(
+                    value = sipYears.toFloat(),
+                    onValueChange = { sipYears = it.toInt() },
+                    valueRange = 2f..40f,
+                    steps = 38,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF3B82F6),
+                        activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
+                        inactiveTrackColor = Color(0xFF262626)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Results Layout
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF18181A))
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("INVESTED PRINCIPAL", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                        Text(currencyFormatter.format(totalSipInvested), fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("EST. GROWTH RETURNS", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                        Text(currencyFormatter.format(sipEstimatedWeatlh), fontSize = 13.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Text("TOTAL VALUE", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                        Text(currencyFormatter.format(sipFutureValue), fontSize = 13.sp, color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CreditWorkspacePage(
+    creditExpenses: List<CreditExpenseEntity>,
+    totalCredit: Double,
+    currencyFormatter: java.text.NumberFormat,
+    viewModel: WealthPulseViewModel,
+    onTriggerManual: (String) -> Unit
+) {
+    val cardBrand = "WEALTHPULSE INFINITE"
+    val cardDigitMask = "**** **** **** 8251"
+    val cardHolder = "MARCUS AURELIUS"
+    val cardExpiry = "09/31"
+    val creditLimit = 500000.0
+    val availableLimit = creditLimit - totalCredit
+    val utilizationPercent = if (creditLimit > 0) (totalCredit / creditLimit) * 100 else 0.0
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Page Title & Header
+        Text(
+            text = "LIQUID DEBTS & SWIPES",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C),
+            letterSpacing = 2.sp
+        )
+        Text(
+            text = "Credit Ledger & Cards",
+            fontSize = 24.sp,
+            fontFamily = FontFamily.Serif,
+            color = TextWhite,
+            fontWeight = FontWeight.Light,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // MAGNIFICENT GLASSMORPHIC ACTIVE CREDIT CARD
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 20.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color(0x334F46E5), // Translucent Indigo
+                            Color(0x1A0F172A), // Dark slate
+                            Color(0x228B5CF6)  // Translucent Purple
+                        )
+                    )
+                )
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        Brush.verticalGradient(
+                            listOf(Color(0x40FFFFFF), Color(0x06FFFFFF))
+                        )
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(20.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = cardBrand,
+                        fontSize = 12.sp,
+                        color = Color(0xFFD4D4D8), // Zinc 300
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp
+                    )
+                    // Mini chip graphics
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp, 24.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFEAB308).copy(alpha = 0.8f))
+                            .border(1.dp, Color(0xFFCA8A04), RoundedCornerShape(6.dp))
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(30.dp))
+
+                Text(
+                    text = cardDigitMask,
+                    fontSize = 20.sp,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column {
+                        Text("CARDHOLDER", fontSize = 9.sp, color = TextGray)
+                        Text(cardHolder, fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("EXPIRES EN", fontSize = 9.sp, color = TextGray)
+                        Text(cardExpiry, fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Utilization Card
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "CREDIT CARD BALANCES & RUNTIMES",
+                    fontSize = 11.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("OUTSTANDING BILL", fontSize = 10.sp, color = TextGray)
+                        Text(currencyFormatter.format(totalCredit), fontSize = 24.sp, color = DangerRed, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("AVAILABLE LIMIT", fontSize = 10.sp, color = TextGray)
+                        Text(currencyFormatter.format(availableLimit), fontSize = 18.sp, color = NeonGreen, fontWeight = FontWeight.Medium)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("TOTAL LIMIT ${currencyFormatter.format(creditLimit)}", fontSize = 9.sp, color = TextGray)
+                    Text(String.format("UTILIZED: %.1f%%", utilizationPercent), fontSize = 10.sp, color = if (utilizationPercent > 30.0) DangerRed else TextGray, fontWeight = FontWeight.SemiBold)
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF262626))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction = (utilizationPercent / 100.0).toFloat().coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .clip(CircleShape)
+                            .background(if (utilizationPercent > 30.0) DangerRed else Color(0xFF8B5CF6))
+                    )
+                }
+            }
+        }
+
+        // Active Swipe log section
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "💳 LOGGED CREDIT CARD TRANSACTIONS",
+                fontSize = 11.sp,
+                color = TextGray,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+            TextButton(
+                onClick = { onTriggerManual("CREDIT") },
+                modifier = Modifier.testTag("credit_tab_manual_button")
+            ) {
+                Text("+ Log Swipe", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        if (creditExpenses.isEmpty()) {
+            EmptyStatePlaceholder("No credit logs recorded. Click '+ Log Swipe' to track.")
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 100.dp)
+            ) {
+                creditExpenses.forEach { cred ->
+                    TransactionItemCard(
+                        title = cred.description,
+                        subtitle = "Card Used: ${cred.cardName} • Category: ${cred.category}",
+                        amount = currencyFormatter.format(cred.amount),
+                        onDelete = { viewModel.deleteCredit(cred.id) },
+                        colorAccent = DangerRed
+                    )
+                }
+            }
+        }
     }
 }
 
