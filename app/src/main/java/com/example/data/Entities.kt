@@ -11,6 +11,7 @@ data class DailyExpenseEntity(
     val description: String,
     val category: String,
     val paymentMode: String,
+    val userId: String = "guest",
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -23,6 +24,7 @@ data class CreditExpenseEntity(
     val category: String,
     val cardName: String,
     val isEmiConversion: Boolean,
+    val userId: String = "guest",
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -35,6 +37,7 @@ data class EmiLoanEntity(
     val category: String,
     val totalTenureMonths: Int,
     val remainingMonths: Int,
+    val userId: String = "guest",
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -49,6 +52,8 @@ data class DebtSplitEntity(
     val debtPersonInvolved: String,
     val isGroupSplit: Boolean,
     val groupName: String,
+    val paidPeople: String = "", // Comma-separated list of people who completed payment
+    val userId: String = "guest",
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -61,6 +66,7 @@ data class IncomePaydayEntity(
     val category: String,
     val incomeFrequency: String, // Monthly, One-off, Freelance
     val paymentMode: String,
+    val userId: String = "guest",
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -73,6 +79,7 @@ data class SipEntity(
     val frequency: String, // Monthly, Weekly, etc.
     val investmentCategory: String, // Mutual Funds, Gold, etc.
     val dayOfMonth: Int, // Day on which monthly SIP auto-debits
+    val userId: String = "guest",
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -84,6 +91,57 @@ data class InvestmentEntity(
     val description: String, // e.g. "INFY Stock" or "Digital Gold"
     val category: String, // Equity, Mutual Funds, Fixed Deposits, Gold, Crypto
     val currentValue: Double, // Real-time or latest valuation
+    val userId: String = "guest",
     val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "credit_cards")
+data class CreditCardEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val cardName: String,
+    val creditLimit: Double,
+    val billDate: Int, // e.g. 15 for 15th of month
+    val billStatus: String = "Pending", // "Pending" or "Paid"
+    val outstandingAmount: Double = 0.0,
+    val userId: String = "guest"
+)
+
+@Entity(tableName = "trip_events")
+data class TripEventEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String,
+    val description: String,
+    val startDate: String,
+    val endDate: String,
+    val isPublic: Boolean = false,
+    val participants: String, // Comma-separated list of participant names
+    val userId: String = "guest",
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "trip_expenses")
+data class TripExpenseEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val tripId: Int,
+    val title: String,
+    val totalAmount: Double,
+    val paidBy: String, // Spender name (can be multiple or just single name, e.g. "Amit")
+    val splitMethod: String, // "EQUAL", "PERCENT", "EXACT", "SHARE"
+    val participantWeights: String, // Comma-separated weights matching involvedParticipants
+    val involvedParticipants: String, // Comma-separated list of names involved
+    val category: String,
+    val notes: String = "",
+    val receiptUri: String = "", // Simulated receipt/invoice URI/filename
+    val userId: String = "guest",
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "participants")
+data class ParticipantEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val name: String,
+    val email: String = "",
+    val isRegistered: Boolean = true,
+    val userId: String = "guest"
 )
 

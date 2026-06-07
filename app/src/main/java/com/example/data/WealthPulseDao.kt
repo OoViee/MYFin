@@ -99,4 +99,59 @@ interface WealthPulseDao {
 
     @Query("DELETE FROM investment_records")
     suspend fun clearInvestmentRecords()
+
+    // Credit Cards
+    @Query("SELECT * FROM credit_cards ORDER BY id ASC")
+    fun getAllCreditCards(): Flow<List<CreditCardEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCreditCard(card: CreditCardEntity)
+
+    @Query("DELETE FROM credit_cards WHERE id = :id")
+    suspend fun deleteCreditCard(id: Int)
+
+    @Query("DELETE FROM credit_cards")
+    suspend fun clearCreditCards()
+
+    // Trip/Events
+    @Query("SELECT * FROM trip_events ORDER BY timestamp DESC")
+    fun getAllTripEvents(): Flow<List<TripEventEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTripEvent(trip: TripEventEntity)
+
+    @Query("DELETE FROM trip_events WHERE id = :id")
+    suspend fun deleteTripEvent(id: Int)
+
+    @Query("DELETE FROM trip_events")
+    suspend fun clearTripEvents()
+
+    // Trip/Group Expenses
+    @Query("SELECT * FROM trip_expenses ORDER BY timestamp DESC")
+    fun getAllTripExpenses(): Flow<List<TripExpenseEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTripExpense(expense: TripExpenseEntity)
+
+    @Query("DELETE FROM trip_expenses WHERE id = :id")
+    suspend fun deleteTripExpense(id: Int)
+
+    @Query("DELETE FROM trip_expenses")
+    suspend fun clearTripExpenses()
+
+    // Dynamic Participants
+    @Query("SELECT * FROM participants ORDER BY name ASC")
+    fun getAllParticipants(): Flow<List<ParticipantEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertParticipant(participant: ParticipantEntity)
+
+    @Query("DELETE FROM participants WHERE id = :id")
+    suspend fun deleteParticipant(id: Int)
+
+    @Query("DELETE FROM participants WHERE name = :name")
+    suspend fun deleteParticipantByName(name: String)
+
+    @Query("DELETE FROM participants")
+    suspend fun clearParticipants()
 }

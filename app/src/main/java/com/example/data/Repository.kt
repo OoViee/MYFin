@@ -45,4 +45,29 @@ class Repository(private val dao: WealthPulseDao) {
     suspend fun insertInvestmentRecord(investment: InvestmentEntity) = dao.insertInvestmentRecord(investment)
     suspend fun deleteInvestmentRecord(id: Int) = dao.deleteInvestmentRecord(id)
     suspend fun clearInvestmentRecords() = dao.clearInvestmentRecords()
+
+    // Credit Cards
+    val allCreditCards: Flow<List<CreditCardEntity>> = dao.getAllCreditCards()
+    suspend fun insertCreditCard(card: CreditCardEntity) = dao.insertCreditCard(card)
+    suspend fun deleteCreditCard(id: Int) = dao.deleteCreditCard(id)
+    suspend fun clearCreditCards() = dao.clearCreditCards()
+
+    // Trip Events
+    val allTripEvents: Flow<List<TripEventEntity>> = dao.getAllTripEvents()
+    suspend fun insertTripEvent(trip: TripEventEntity) = dao.insertTripEvent(trip)
+    suspend fun deleteTripEvent(id: Int) = dao.deleteTripEvent(id)
+    suspend fun clearTripEvents() = dao.clearTripEvents()
+
+    // Trip Expenses
+    val allTripExpenses: Flow<List<TripExpenseEntity>> = dao.getAllTripExpenses()
+    suspend fun insertTripExpense(expense: TripExpenseEntity) = dao.insertTripExpense(expense)
+    suspend fun deleteTripExpense(id: Int) = dao.deleteTripExpense(id)
+    suspend fun clearTripExpenses() = dao.clearTripExpenses()
+
+    // Participants
+    val allParticipants: Flow<List<ParticipantEntity>> = dao.getAllParticipants()
+    suspend fun insertParticipant(participant: ParticipantEntity) = dao.insertParticipant(participant)
+    suspend fun deleteParticipant(id: Int) = dao.deleteParticipant(id)
+    suspend fun deleteParticipantByName(name: String) = dao.deleteParticipantByName(name)
+    suspend fun clearParticipants() = dao.clearParticipants()
 }

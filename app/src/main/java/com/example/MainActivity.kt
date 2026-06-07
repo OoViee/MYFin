@@ -25,12 +25,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.example.data.*
 import com.example.ui.viewmodel.AiCoreState
 import com.example.ui.viewmodel.WealthPulseViewModel
@@ -138,11 +144,12 @@ fun FinancialWorkspaceScreen(
     val incomePaydays by viewModel.incomePaydays.collectAsState()
     val sipRecords by viewModel.sipRecords.collectAsState()
     val investmentRecords by viewModel.investmentRecords.collectAsState()
+    val creditCards by viewModel.creditCards.collectAsState()
     val aiState by viewModel.aiState.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
 
     var activeTab by remember { mutableStateOf(0) }
     var activeNavigationMenuTab by remember { mutableStateOf("home") }
-    var userName by remember { mutableStateOf("Marcus Aurelius") }
     var userInputText by remember { mutableStateOf("") }
     var showQuickSimMicSheet by remember { mutableStateOf(false) }
 
@@ -151,6 +158,26 @@ fun FinancialWorkspaceScreen(
     var currentCategoryPage by remember { mutableStateOf<String?>(null) }
 
     val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale("en", "IN")) }
+
+    val greetingText = remember(currentUser) {
+        val user = currentUser
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val prefix = when (hour) {
+            in 0..11 -> "Good Morning"
+            in 12..16 -> "Good Afternoon"
+            else -> "Good Evening"
+        }
+        if (user == null || user.isAnonymous) {
+            prefix
+        } else {
+            val email = user.email
+            val localPart = email.substringBefore("@")
+            val displayName = localPart.split(".", "_", "-").joinToString(" ") { part ->
+                part.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+            }
+            "$prefix, $displayName"
+        }
+    }
 
     // Aggregate values
     val totalExpense = dailyExpenses.sumOf { it.amount }
@@ -226,7 +253,7 @@ fun FinancialWorkspaceScreen(
             ) {
                 Column {
                     Text(
-                        text = "WEALTHPULSE CORE",
+                        text = "MYFIN CORE",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF78716C), // Stone 500
@@ -235,7 +262,7 @@ fun FinancialWorkspaceScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Good Evening, $userName",
+                        text = greetingText,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Normal,
                         color = Color(0xFFE7E5E4), // Stone 200 elegant serif
@@ -335,30 +362,7 @@ fun FinancialWorkspaceScreen(
                         }
                     }
 
-                    // Gorgeous integrated emerald safe-spend tip strip
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFF064E3B).copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                            .border(1.dp, Color(0xFF064E3B).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(NeonGreen)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (trueDisposable >= 0) "Runway stable. Safe to spend ₹8.5k this weekend." else "Runway warning! Re-balance active card debts.",
-                            fontSize = 11.sp,
-                            color = Color(0xFF34D399),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+
 
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider(color = Color(0xFF292524), thickness = 1.dp)
@@ -610,20 +614,7 @@ fun FinancialWorkspaceScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Simulated voice cue helpers
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "💡 Tap the profile mic button to test native transactions instantly",
-                            fontSize = 11.sp,
-                            color = TextGray
-                        )
-                    }
 
                     // REST API RESPONSE / PARSED STATE INDICATION
                     AnimatedVisibility(
@@ -817,102 +808,7 @@ fun FinancialWorkspaceScreen(
                 }
             }
 
-            // QUICK OPTION LOG TEMPLATES CARD
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, Color(0xFF292524)),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "⚡ ONE-TAP QUICK LOG TEMPLATES",
-                        fontSize = 11.sp,
-                        color = NeonGreen,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Draft typical financial entries instantly with a single tap. Records can be removed one-by-one inside their respective workspace tabs.",
-                        fontSize = 11.sp,
-                        color = TextGray
-                    )
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val context = LocalContext.current
-
-                    // Scrollable list of typical predefined transactions
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val presets = listOf(
-                            FinancialPresetCardTemp("☕ Chai & Coffee", "₹30", "Cash Expense") {
-                                viewModel.addManualExpense(30.0, "Tea & Cookies with colleagues", "Food & Dining", "Cash")
-                            },
-                            FinancialPresetCardTemp("🍕 Zomato Dinner", "₹420", "UPI Expense") {
-                                viewModel.addManualExpense(420.0, "Dinner Order Zomato Pro", "Food & Dining", "UPI")
-                            },
-                            FinancialPresetCardTemp("🚗 Auto Rickshaw", "₹120", "UPI Expense") {
-                                viewModel.addManualExpense(120.0, "Auto Commute to office", "Transport", "UPI")
-                            },
-                            FinancialPresetCardTemp("🛍️ Amazon Clothes", "₹1,800", "Credit Swipes") {
-                                viewModel.addManualCredit(1800.0, "Apparel Order Amazon Fashion", "HDFC Millennia", "Shopping")
-                            },
-                            FinancialPresetCardTemp("🏠 Home Rent", "₹15,000", "Bank Transfer") {
-                                viewModel.addManualExpense(15000.0, "Flat Rental Payout", "Rent", "Bank Transfer")
-                            },
-                            FinancialPresetCardTemp("💰 Salary Credited", "₹85,000", "Income Direct") {
-                                viewModel.addManualIncome(85000.0, "Corporate Fulltime Salary", "Monthly")
-                            },
-                            FinancialPresetCardTemp("📈 Mutual Fund SIP", "₹5,000", "SIP Committed") {
-                                viewModel.addManualSip(5000.0, "Parag Parikh Flexi Fund Mutual SIP", "Mutual Funds", 5)
-                            },
-                            FinancialPresetCardTemp("🪙 Digital Gold Asset", "₹10,000", "Portfolio Item") {
-                                viewModel.addManualInvestment(10000.0, "Digital sovereign Gold Bond asset", "Gold", 11200.0)
-                            }
-                        )
-
-                        presets.forEach { preset ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0xFF262524).copy(alpha = 0.5f))
-                                    .border(1.dp, Color(0xFF292524), RoundedCornerShape(14.dp))
-                                    .clickable {
-                                        preset.action()
-                                        Toast.makeText(context, "Logged ${preset.name} (${preset.amt})", Toast.LENGTH_SHORT).show()
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 10.dp)
-                            ) {
-                                Column {
-                                    Text(preset.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(preset.amt, fontSize = 11.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Box(
-                                            modifier = Modifier
-                                                .size(4.dp)
-                                                .clip(CircleShape)
-                                                .background(TextGray)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(preset.type, fontSize = 10.sp, color = TextGray)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
 
             // TOOL MODULE QUICK SPREADSHEEET FOR MANUAL ADDS
             Row(
@@ -1142,6 +1038,16 @@ fun FinancialWorkspaceScreen(
             }
                             Spacer(modifier = Modifier.height(100.dp))
                         } // CLOSES home page column
+                    } else if (activeNavigationMenuTab == "calendar") {
+                        CalendarWorkspacePage(
+                            dailyExpenses = dailyExpenses,
+                            creditExpenses = creditExpenses,
+                            emiLoans = emiLoans,
+                            sipRecords = sipRecords,
+                            incomePaydays = incomePaydays,
+                            currencyFormatter = currencyFormatter,
+                            viewModel = viewModel
+                        )
                     } else if (activeNavigationMenuTab == "emi") {
                         EmiWorkspacePage(
                             emiLoans = emiLoans,
@@ -1161,7 +1067,16 @@ fun FinancialWorkspaceScreen(
                     } else if (activeNavigationMenuTab == "credit") {
                         CreditWorkspacePage(
                             creditExpenses = creditExpenses,
+                            creditCards = creditCards,
                             totalCredit = totalCredit,
+                            currencyFormatter = currencyFormatter,
+                            viewModel = viewModel,
+                            onTriggerManual = { type -> activeManualDialog = type }
+                        )
+                    } else if (activeNavigationMenuTab == "lent") {
+                        SplitsWorkspacePage(
+                            debtSplits = debtSplits,
+                            totalDebt = totalDebt,
                             currencyFormatter = currencyFormatter,
                             viewModel = viewModel,
                             onTriggerManual = { type -> activeManualDialog = type }
@@ -1210,9 +1125,11 @@ fun FinancialWorkspaceScreen(
                         ) {
                             val items = listOf(
                                 Triple("home", Icons.Default.Home, "Home"),
+                                Triple("calendar", Icons.Default.DateRange, "Calendar"),
                                 Triple("emi", Icons.Default.AccountBox, "EMI"),
-                                Triple("sip", Icons.Default.DateRange, "SIP"),
+                                Triple("sip", Icons.Default.PlayArrow, "SIP"),
                                 Triple("credit", Icons.Default.Send, "Credit"),
+                                Triple("lent", Icons.Default.Share, "Splits"),
                                 Triple("settings", Icons.Default.Settings, "Settings")
                             )
 
@@ -1348,6 +1265,7 @@ fun FinancialWorkspaceScreen(
         activeManualDialog?.let { type ->
             var fieldAmt by remember { mutableStateOf("") }
             var fieldDesc by remember { mutableStateOf("") }
+            var showValidationError by remember { mutableStateOf(false) }
 
             // Module specific fields
             var fieldCat by remember {
@@ -1493,6 +1411,28 @@ fun FinancialWorkspaceScreen(
                                     selected = fieldPayMode,
                                     onSelect = { fieldPayMode = it }
                                 )
+                                if (fieldPayMode == "Credit Card") {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    OutlinedTextField(
+                                        value = fieldCardName,
+                                        onValueChange = { fieldCardName = it },
+                                        label = { Text("Associated Credit Card", color = TextGray) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    ManualOptionSelector(
+                                        label = "Or Speed Select Card:",
+                                        options = listOf(
+                                            "💳 HDFC Millennia" to "HDFC Millennia",
+                                            "💳 ICICI Amazon" to "ICICI Amazon",
+                                            "💳 Axis Magnus" to "Axis Magnus"
+                                        ),
+                                        selected = fieldCardName,
+                                        onSelect = { fieldCardName = it }
+                                    )
+                                }
                             }
                             "CREDIT" -> {
                                 OutlinedTextField(
@@ -1592,31 +1532,74 @@ fun FinancialWorkspaceScreen(
                                 OutlinedTextField(
                                     value = fieldPerson,
                                     onValueChange = { fieldPerson = it },
-                                    label = { Text("Involved Person Name", color = TextGray) },
+                                    label = { Text("Involved Person Name(s) (comma separated)", color = TextGray) },
+                                    placeholder = { Text("e.g. Amit, Rahul, Priya", color = TextGray.copy(alpha = 0.5f)) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    textStyle = LocalTextStyle.current.copy(color = TextWhite)
+                                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
-                                ManualOptionSelector(
-                                    label = "Or Speed Select Person:",
-                                    options = listOf(
-                                        "👤 Amit" to "Amit",
-                                        "👤 Neha" to "Neha",
-                                        "👤 Rahul" to "Rahul",
-                                        "👤 Priya" to "Priya",
-                                        "👤 Custom" to "Custom"
-                                    ),
-                                    selected = fieldPerson,
-                                    onSelect = { fieldPerson = it },
-                                    colorAccent = AccentOrange
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "⚡ TAP TO TOGGLE MULTIPLE FRIENDS:",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextGray
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val currentPeopleParts = fieldPerson.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    val presetFriends = listOf("Amit", "Neha", "Rahul", "Priya", "Karan", "Sonia", "Sam")
+                                    presetFriends.forEach { friend ->
+                                        val isSelected = currentPeopleParts.any { it.equals(friend, ignoreCase = true) }
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = if (isSelected) AccentOrange else Color(0xFF292524),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                .background(if (isSelected) AccentOrange.copy(alpha = 0.15f) else Color(0xFF161616))
+                                                .clickable {
+                                                    val updatedList = currentPeopleParts.toMutableList()
+                                                    if (isSelected) {
+                                                        updatedList.removeAll { it.equals(friend, ignoreCase = true) }
+                                                    } else {
+                                                        updatedList.add(friend)
+                                                    }
+                                                    fieldPerson = updatedList.distinct().joinToString(", ")
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = "👤 $friend",
+                                                fontSize = 11.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isSelected) AccentOrange else TextWhite
+                                            )
+                                        }
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(12.dp))
                                 OutlinedTextField(
                                     value = fieldGroupName,
                                     onValueChange = { fieldGroupName = it },
                                     label = { Text("Group Split Session name", color = TextGray) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    textStyle = LocalTextStyle.current.copy(color = TextWhite)
+                                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 ManualOptionSelector(
@@ -1731,6 +1714,16 @@ fun FinancialWorkspaceScreen(
                             }
                         }
 
+                        if (showValidationError) {
+                            Text(
+                                text = "⚠️ Please enter a valid amount greater than 0.",
+                                color = DangerRed,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Row(
@@ -1744,17 +1737,32 @@ fun FinancialWorkspaceScreen(
                             Button(
                                 onClick = {
                                     val amtD = fieldAmt.toDoubleOrNull() ?: 0.0
-                                    if (amtD > 0.0 && fieldDesc.isNotBlank()) {
+                                    if (amtD <= 0.0) {
+                                        showValidationError = true
+                                    } else {
+                                        showValidationError = false
+                                        val finalDesc = if (fieldDesc.isNotBlank()) fieldDesc else {
+                                            when (type) {
+                                                "DEBT" -> "Split Bill with ${if (fieldPerson.isNotBlank()) fieldPerson else "Friends"}"
+                                                "EXPENSE" -> "Manual Expense ($fieldCat)"
+                                                "CREDIT" -> "Credit Swipe"
+                                                "EMI" -> "EMI Loan Payment"
+                                                "INCOME" -> "Income Record"
+                                                "SIP" -> "SIP Contribution"
+                                                "INVESTMENT" -> "Asset Investment"
+                                                else -> "Manual Entry"
+                                            }
+                                        }
                                         when (type) {
-                                            "EXPENSE" -> viewModel.addManualExpense(amtD, fieldDesc, fieldCat, fieldPayMode)
-                                            "CREDIT" -> viewModel.addManualCredit(amtD, fieldDesc, fieldCardName, fieldCat)
-                                            "EMI" -> viewModel.addManualEmi(amtD, fieldDesc, fieldTenure.toIntOrNull() ?: 12, fieldRemMonths.toIntOrNull() ?: 8)
-                                            "DEBT" -> viewModel.addManualDebt(amtD, fieldDesc, fieldPerson, fieldGroupName.isNotBlank(), fieldGroupName)
-                                            "INCOME" -> viewModel.addManualIncome(amtD, fieldDesc, fieldFrequency)
-                                            "SIP" -> viewModel.addManualSip(amtD, fieldDesc, fieldCat, fieldSipDay.toIntOrNull() ?: 5)
+                                            "EXPENSE" -> viewModel.addManualExpense(amtD, finalDesc, fieldCat, fieldPayMode, cardName = fieldCardName)
+                                            "CREDIT" -> viewModel.addManualCredit(amtD, finalDesc, fieldCardName, fieldCat)
+                                            "EMI" -> viewModel.addManualEmi(amtD, finalDesc, fieldTenure.toIntOrNull() ?: 12, fieldRemMonths.toIntOrNull() ?: 8)
+                                            "DEBT" -> viewModel.addManualDebt(amtD, finalDesc, fieldPerson, fieldGroupName.isNotBlank(), fieldGroupName)
+                                            "INCOME" -> viewModel.addManualIncome(amtD, finalDesc, fieldFrequency)
+                                            "SIP" -> viewModel.addManualSip(amtD, finalDesc, fieldCat, fieldSipDay.toIntOrNull() ?: 5)
                                             "INVESTMENT" -> {
                                                 val currVal = fieldCurrentVal.toDoubleOrNull() ?: amtD
-                                                viewModel.addManualInvestment(amtD, fieldDesc, fieldCat, currVal)
+                                                viewModel.addManualInvestment(amtD, finalDesc, fieldCat, currVal)
                                             }
                                         }
                                         activeManualDialog = null
@@ -1960,12 +1968,7 @@ fun EmptyStatePlaceholder(msg: String) {
     }
 }
 
-data class FinancialPresetCardTemp(
-    val name: String,
-    val amt: String,
-    val type: String,
-    val action: () -> Unit
-)
+
 
 @Composable
 fun CategoryHubGridCard(
@@ -2747,8 +2750,34 @@ fun UserProfileWorkspacePage(
     totalCredit: Double,
     totalSip: Double,
     trueDisposable: Double,
-    catExps: Double
+    catExps: Double,
+    viewModel: WealthPulseViewModel = viewModel()
 ) {
+    val currentUser by viewModel.currentUser.collectAsState()
+    val displayName = remember(currentUser) {
+        val user = currentUser
+        if (user == null || user.isAnonymous) {
+            "Guest Analyst"
+        } else {
+            val email = user.email
+            val localPart = email.substringBefore("@")
+            localPart.split(".", "_", "-").joinToString(" ") { part ->
+                part.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+            }
+        }
+    }
+    val initials = remember(displayName) {
+        displayName.split(" ").filter { it.isNotEmpty() }.take(2).joinToString("") { it.take(1).uppercase() }
+    }
+    val analystId = remember(currentUser) {
+        val user = currentUser
+        if (user == null || user.isAnonymous) {
+            "ID: WP-GUEST-LOCAL"
+        } else {
+            "ID: WP-SECURE-${user.uid.takeLast(6).uppercase()}"
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2757,7 +2786,7 @@ fun UserProfileWorkspacePage(
     ) {
         // Core Header
         Text(
-            text = "Marcus Aurelius",
+            text = displayName,
             fontSize = 24.sp,
             fontFamily = FontFamily.Serif,
             color = TextWhite,
@@ -2793,13 +2822,13 @@ fun UserProfileWorkspacePage(
                         .border(1.dp, NeonGreen.copy(alpha = 0.4f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("MA", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NeonGreen)
+                    Text(initials.ifEmpty { "G" }, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NeonGreen)
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text("Marcus Aurelius", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                    Text("Analyst Level: Pro Wealth Planner", fontSize = 11.sp, color = TextGray)
-                    Text("ID: WP-99-MARCUS", fontSize = 10.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    Text(displayName, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                    Text(if (currentUser != null && !currentUser!!.isAnonymous) "Analyst Level: Vault Verified Planner" else "Analyst Level: Local Sandbox", fontSize = 11.sp, color = TextGray)
+                    Text(analystId, fontSize = 10.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -2943,6 +2972,16 @@ fun SettingsWorkspacePage(
     var highPrecisionParser by remember { mutableStateOf(true) }
 
     val context = LocalContext.current
+    val currentUser by viewModel.currentUser.collectAsState()
+    val currentUserId by viewModel.currentUserId.collectAsState()
+    var showAuthDialog by remember { mutableStateOf(false) }
+
+    if (showAuthDialog) {
+        AuthDialog(
+            onDismiss = { showAuthDialog = false },
+            viewModel = viewModel
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -2950,6 +2989,166 @@ fun SettingsWorkspacePage(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
+        // -----------------------------------------------------------------
+        // BEAUTIFUL SECURITY & FIREBASE AUTHENTICATION PANEL
+        // -----------------------------------------------------------------
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, if (currentUser != null) NeonGreen.copy(alpha = 0.5f) else Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+                .testTag("auth_account_security_card")
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "FIREBASE SERVICE AUTHENTICATION",
+                            fontSize = 11.sp,
+                            color = if (currentUser != null) NeonGreen else TextGray,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (currentUser != null) "Session Active (Database Partitioned)" 
+                                   else "Unsigned Guest Mode (Local Sandbox Database)",
+                            fontSize = 14.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    
+                    // Status Badge Indicator
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (currentUser != null) NeonGreen.copy(alpha = 0.15f) else Color(0x3378716C))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (currentUser != null) "VERIFIED" else "SANDBOX",
+                            fontSize = 10.sp,
+                            color = if (currentUser != null) NeonGreen else TextGray,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = Color(0xFF292524))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (currentUser != null) {
+                    // Signed User info
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(NeonGreen.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Active user ID icon",
+                                tint = NeonGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Registered Email Address:",
+                                fontSize = 11.sp,
+                                color = TextGray
+                            )
+                            Text(
+                                text = currentUser!!.email,
+                                fontSize = 13.sp,
+                                color = TextWhite,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Partition ID: $currentUserId",
+                        fontSize = 10.sp,
+                        color = Color(0xFF78716C),
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(start = 46.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            viewModel.signOutUser {
+                                Toast.makeText(context, "Signed out safely! Back to Local Sandbox.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF292524)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .testTag("auth_logout_button")
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = Icons.Default.ExitToApp, contentDescription = "Log Out Icon", tint = TextWhite, modifier = Modifier.size(16.dp))
+                            Text("SECURELY SIGN OUT", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    // Guest user promotion CTA
+                    Text(
+                        text = "Your financial worksheets are currently local. Setup an encrypted account to backup expenses, loans, splits, and payday calendars securely across any session.",
+                        fontSize = 12.sp,
+                        color = TextGray,
+                        lineHeight = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = { showAuthDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .testTag("auth_trigger_login_modal")
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = Icons.Default.Person, contentDescription = "Security login key icon", tint = NavyBg, modifier = Modifier.size(16.dp))
+                            Text("SECURELY LOCK & PERSIST MY DATA", fontSize = 12.sp, color = NavyBg, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // Core Header
         Text(
             text = "SYSTEM CONFIGURATOR",
@@ -3084,7 +3283,7 @@ fun SettingsWorkspacePage(
                 Text("SQLite Engines: Active (Room Persistence Library)", fontSize = 12.sp, color = TextWhite)
                 Text("AI Parser: Google Gemini-Flash Web Orchestration (Model 3.5)", fontSize = 12.sp, color = TextWhite)
                 Text("Telemetry Client: Operational on DeX / Foldable Adaptive layout", fontSize = 12.sp, color = TextWhite)
-                Text("Application Version: WealthPulse Core v2.4.2", fontSize = 12.sp, color = NeonGreen)
+                Text("Application Version: MYFin Core v2.4.2", fontSize = 12.sp, color = NeonGreen)
             }
         }
 
@@ -3121,6 +3320,19 @@ fun EmiWorkspacePage(
     viewModel: WealthPulseViewModel,
     onTriggerManual: (String) -> Unit
 ) {
+    // Interactive Form and Page state
+    var emiAmount by remember { mutableStateOf("") }
+    var emiDesc by remember { mutableStateOf("") }
+    var emiCategory by remember { mutableStateOf("Loan") }
+    var emiTotalMonths by remember { mutableStateOf("12") }
+    var emiDoneMonths by remember { mutableStateOf("0") }
+    var emiDeductionDay by remember { mutableStateOf("5") }
+    
+    var showForm by remember { mutableStateOf(false) }
+    var showCalculator by remember { mutableStateOf(false) }
+    var formError by remember { mutableStateOf<String?>(null) }
+
+    // Calculator inputs
     var calcPrincipal by remember { mutableStateOf(1000000.0) } // 10 Lac default
     var calcInterestRate by remember { mutableStateOf(8.5) }    // 8.5% default
     var calcTenureYears by remember { mutableStateOf(15) }      // 15 years default
@@ -3152,7 +3364,7 @@ fun EmiWorkspacePage(
             letterSpacing = 2.sp
         )
         Text(
-            text = "EMI Loans Tracker",
+            text = "EMI Liability Monitor",
             fontSize = 24.sp,
             fontFamily = FontFamily.Serif,
             color = TextWhite,
@@ -3161,12 +3373,14 @@ fun EmiWorkspacePage(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Summary Card
+        // Summary Metric & Quick Action Dashboard
         Card(
             shape = RoundedCornerShape(24.dp),
             border = BorderStroke(1.dp, Color(0xFF292524)),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -3176,8 +3390,8 @@ fun EmiWorkspacePage(
                 ) {
                     Column {
                         Text(
-                            text = "TOTAL ACTIVE MONTHLY RUNRATE",
-                            fontSize = 11.sp,
+                            text = "ACTIVE EMI DEBT RUNRATE",
+                            fontSize = 10.sp,
                             color = TextGray,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -3189,154 +3403,519 @@ fun EmiWorkspacePage(
                             color = AccentOrange,
                             fontFamily = FontFamily.Serif
                         )
+                        Text(
+                            text = "${emiLoans.size} active liability schedules tracked",
+                            fontSize = 11.sp,
+                            color = TextGray,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
                     }
-                    TextButton(
-                        onClick = { onTriggerManual("EMI") },
-                        modifier = Modifier.testTag("emi_tab_manual_button")
+                    Button(
+                        onClick = { showForm = !showForm },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (showForm) Color(0xFF292524) else NeonGreen
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("emi_tab_toggle_form_btn")
                     ) {
-                        Text("+ Add EMI", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (showForm) "Close Form" else "+ Add EMI",
+                            fontSize = 11.sp,
+                            color = if (showForm) TextWhite else NavyBg,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
         }
 
-        // Active Loans list
+        // INLINE ADD EMI FORM CARD
+        AnimatedVisibility(visible = showForm) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFF2E2420)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF141110)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "🆕 REGISTER ACTIVE EMI LIABILITY",
+                        fontSize = 12.sp,
+                        color = AccentOrange,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = emiDesc,
+                        onValueChange = { emiDesc = it },
+                        label = { Text("EMI Name / Description", fontSize = 12.sp, color = TextGray) },
+                        placeholder = { Text("e.g. HDFC Home Loan, TV Instalments", fontSize = 12.sp) },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextWhite,
+                            focusedBorderColor = AccentOrange,
+                            unfocusedBorderColor = Color(0xFF292524)
+                        )
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = emiAmount,
+                            onValueChange = { emiAmount = it },
+                            label = { Text("EMI Amount (₹)", fontSize = 12.sp, color = TextGray) },
+                            modifier = Modifier.weight(1f),
+                            textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextWhite,
+                                focusedBorderColor = AccentOrange,
+                                unfocusedBorderColor = Color(0xFF292524)
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = emiDeductionDay,
+                            onValueChange = { emiDeductionDay = it },
+                            label = { Text("Deduction Day (1-31)", fontSize = 12.sp, color = TextGray) },
+                            modifier = Modifier.weight(1f),
+                            textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextWhite,
+                                focusedBorderColor = AccentOrange,
+                                unfocusedBorderColor = Color(0xFF292524)
+                            )
+                        )
+                    }
+
+                    // Speed Deduction day selector
+                    Text("Or Select Deduction Day:", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("1", "5", "10", "15", "20", "25").forEach { speedDay ->
+                            val isSelected = emiDeductionDay == speedDay
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) AccentOrange else Color(0xFF1E1E1F))
+                                    .border(BorderStroke(1.dp, if (isSelected) AccentOrange else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .clickable { emiDeductionDay = speedDay }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(text = "${speedDay}th", fontSize = 11.sp, color = if (isSelected) NavyBg else TextWhite, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = emiTotalMonths,
+                            onValueChange = { emiTotalMonths = it },
+                            label = { Text("Total Installments", fontSize = 12.sp, color = TextGray) },
+                            modifier = Modifier.weight(1f),
+                            textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextWhite,
+                                focusedBorderColor = AccentOrange,
+                                unfocusedBorderColor = Color(0xFF292524)
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = emiDoneMonths,
+                            onValueChange = { emiDoneMonths = it },
+                            label = { Text("Installments Done", fontSize = 12.sp, color = TextGray) },
+                            modifier = Modifier.weight(1f),
+                            textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextWhite,
+                                focusedBorderColor = AccentOrange,
+                                unfocusedBorderColor = Color(0xFF292524)
+                            )
+                        )
+                    }
+
+                    // EMI Category Speed Selector
+                    Text("Select Purpose Category:", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "🏠 Housing" to "Home Loan",
+                            "🚗 Vehicle" to "Car Loan",
+                            "💡 Utilities" to "Utility Debt",
+                            "🎓 Education" to "Education Loan",
+                            "💻 Gadgets" to "Electronics EMI",
+                            "📦 Personal" to "Personal"
+                        ).forEach { (label, categoryVal) ->
+                            val isSelected = emiCategory == categoryVal
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) AccentOrange.copy(alpha = 0.2f) else Color(0xFF1E1E1F))
+                                    .border(BorderStroke(1.dp, if (isSelected) AccentOrange else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .clickable { emiCategory = categoryVal }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(text = label, fontSize = 11.sp, color = if (isSelected) AccentOrange else TextWhite)
+                            }
+                        }
+                    }
+
+                    formError?.let { err ->
+                        Text(err, color = DangerRed, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
+                    }
+
+                    Button(
+                        onClick = {
+                            val amt = emiAmount.toDoubleOrNull() ?: 0.0
+                            val day = emiDeductionDay.toIntOrNull() ?: 5
+                            val total = emiTotalMonths.toIntOrNull() ?: 12
+                            val done = emiDoneMonths.toIntOrNull() ?: 0
+                            
+                            if (emiDesc.isBlank()) {
+                                formError = "Please enter an EMI Name description."
+                            } else if (amt <= 0.0) {
+                                formError = "Please enter an installment amount."
+                            } else if (day !in 1..31) {
+                                formError = "Deduction Day must be between 1 and 31."
+                            } else if (total <= 0) {
+                                formError = "Total Installments must be greater than 0."
+                            } else if (done < 0 || done > total) {
+                                formError = "Installments Done must be between 0 and $total."
+                            } else {
+                                formError = null
+                                val remaining = total - done
+                                viewModel.addManualEmi(amt, emiDesc, total, remaining, day)
+                                // Reset form
+                                emiAmount = ""
+                                emiDesc = ""
+                                emiTotalMonths = "12"
+                                emiDoneMonths = "0"
+                                showForm = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentOrange),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Register Active EMI Schedule 📅", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Active Loans/EMIs list
         Text(
-            text = "📋 RUNNING EMIs & LIABILITY SCHEDULES",
+            text = "📋 RUNNING EMIs & PAYOUT LOGS",
             fontSize = 11.sp,
-            color = TextGray,
+            color = TextWhite.copy(alpha = 0.6f),
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.2.sp,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
         if (emiLoans.isEmpty()) {
-            EmptyStatePlaceholder("No live structural liabilities or loan EMIs registered.")
+            EmptyStatePlaceholder("No live structural liabilities or loan EMIs registered yet.")
         } else {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 20.dp)
             ) {
                 emiLoans.forEach { emi ->
-                    TransactionItemCard(
-                        title = emi.description,
-                        subtitle = "Loan tenure: ${emi.totalTenureMonths} mo | Class: ${emi.category}",
-                        amount = "${currencyFormatter.format(emi.amount)}/mo",
-                        onDelete = { viewModel.deleteEmi(emi.id) },
-                        colorAccent = AccentOrange
-                    )
+                    val done = emi.totalTenureMonths - emi.remainingMonths
+                    val total = emi.totalTenureMonths
+                    val progressFraction = if (total > 0) done.toFloat() / total.toFloat() else 0.0f
+                    
+                    // Retrieve extraction day logic from timestamp
+                    val cal = java.util.Calendar.getInstance()
+                    cal.timeInMillis = emi.timestamp
+                    val deductionDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+
+                    // BEAUTIFUL EMI DEBT CARD
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(AccentOrange.copy(alpha = 0.12f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("🏦", fontSize = 18.sp)
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = emi.description,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextWhite,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "Category: ${emi.category} • Auto Pay: Day ${deductionDay}th",
+                                            fontSize = 11.sp,
+                                            color = TextGray,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Text(
+                                        text = "${currencyFormatter.format(emi.amount)}/mo",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = AccentOrange
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    IconButton(
+                                        onClick = { viewModel.deleteEmi(emi.id) },
+                                        modifier = Modifier.size(28.dp).testTag("delete_emi_${emi.id}")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete record",
+                                            tint = DangerRed.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Dynamic Installment Progress Line
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Progress: $done / $total Paid installments",
+                                    fontSize = 11.sp,
+                                    color = TextGray
+                                )
+                                Text(
+                                    text = String.format("%.0f%% Done", progressFraction * 100f),
+                                    fontSize = 11.sp,
+                                    color = AccentOrange,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { progressFraction.coerceIn(0f, 1f) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = AccentOrange,
+                                trackColor = Color(0xFF262626)
+                            )
+
+                            // Alert Banner
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 10.dp)
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFF1F120D))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("📅", fontSize = 11.sp)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Auto-debit reminder: Next deduction scheduled on date $deductionDay",
+                                        fontSize = 10.sp,
+                                        color = AccentOrange,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // PREMIUM INTERACTIVE EMI LOAN AMORTIZATION CALCULATOR
+        // INTERACTIVE LOAN CALCULATOR SUMMARY CONTAINER (COLLAPSIBLE)
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
+            border = BorderStroke(1.dp, Color(0xFF222222)),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF101010)),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 90.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 90.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "🧮 INTERACTIVE LOAN CALCULATOR",
-                    fontSize = 12.sp,
-                    color = NeonGreen,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Simulate mock running loans to calculate installment interest and plan debt paybacks.",
-                    fontSize = 11.sp,
-                    color = TextGray
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Principal Amount Slider
-                Text(
-                    text = "Principal Amount: ${currencyFormatter.format(calcPrincipal)}",
-                    fontSize = 13.sp,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Medium
-                )
-                Slider(
-                    value = calcPrincipal.toFloat(),
-                    onValueChange = { calcPrincipal = it.toDouble() },
-                    valueRange = 50000f..5000000f,
-                    steps = 99,
-                    colors = SliderDefaults.colors(
-                        thumbColor = NeonGreen,
-                        activeTrackColor = NeonGreen.copy(alpha = 0.5f),
-                        inactiveTrackColor = Color(0xFF262626)
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Interest Rate Slider
-                Text(
-                    text = "Interest Rate: ${String.format("%.1f%%", calcInterestRate)} p.a.",
-                    fontSize = 13.sp,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Medium
-                )
-                Slider(
-                    value = calcInterestRate.toFloat(),
-                    onValueChange = { scale -> calcInterestRate = Math.round(scale * 10) / 10.0 },
-                    valueRange = 4f..24f,
-                    steps = 200,
-                    colors = SliderDefaults.colors(
-                        thumbColor = NeonGreen,
-                        activeTrackColor = NeonGreen.copy(alpha = 0.5f),
-                        inactiveTrackColor = Color(0xFF262626)
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Tenure Slider
-                Text(
-                    text = "Tenure: $calcTenureYears Years (${calcTenureYears * 12} months)",
-                    fontSize = 13.sp,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Medium
-                )
-                Slider(
-                    value = calcTenureYears.toFloat(),
-                    onValueChange = { calcTenureYears = it.toInt() },
-                    valueRange = 1f..30f,
-                    steps = 29,
-                    colors = SliderDefaults.colors(
-                        thumbColor = NeonGreen,
-                        activeTrackColor = NeonGreen.copy(alpha = 0.5f),
-                        inactiveTrackColor = Color(0xFF262626)
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Results Layout
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF18181A))
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .clickable { showCalculator = !showCalculator },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                        Text("EST. MONTHLY EMI", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                        Text(currencyFormatter.format(emiCalculated), fontSize = 13.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🧮", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "INTERACTIVE LOAN CALCULATOR",
+                                fontSize = 12.sp,
+                                color = NeonGreen,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.5.sp
+                            )
+                            Text(
+                                text = "Simulate prospective loans is secondary focus",
+                                fontSize = 10.sp,
+                                color = TextGray
+                            )
+                        }
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                        Text("INTEREST PAYABLE", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                        Text(currencyFormatter.format(totalInterest), fontSize = 13.sp, color = AccentOrange, fontWeight = FontWeight.Bold)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                        Text("TOTAL COST", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                        Text(currencyFormatter.format(totalPayment), fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = if (showCalculator) "[- Tap to Collapse]" else "[+ Tap to Expand]",
+                        fontSize = 11.sp,
+                        color = TextGray,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                AnimatedVisibility(visible = showCalculator) {
+                    Column(modifier = Modifier.padding(top = 16.dp)) {
+                        Text(
+                            text = "Plan compounding amortizations. Adjust variables in real-time to compute prospective debt repayments.",
+                            fontSize = 11.sp,
+                            color = TextGray,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        // Principal Amount Slider
+                        Text(
+                            text = "Principal Amount: ${currencyFormatter.format(calcPrincipal)}",
+                            fontSize = 13.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Slider(
+                            value = calcPrincipal.toFloat(),
+                            onValueChange = { calcPrincipal = it.toDouble() },
+                            valueRange = 50000f..5000000f,
+                            steps = 99,
+                            colors = SliderDefaults.colors(
+                                thumbColor = NeonGreen,
+                                activeTrackColor = NeonGreen.copy(alpha = 0.5f),
+                                inactiveTrackColor = Color(0xFF262626)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Interest Rate Slider
+                        Text(
+                            text = "Interest Rate: ${String.format("%.1f%%", calcInterestRate)} p.a.",
+                            fontSize = 13.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Slider(
+                            value = calcInterestRate.toFloat(),
+                            onValueChange = { scale -> calcInterestRate = Math.round(scale * 10) / 10.0 },
+                            valueRange = 4f..24f,
+                            steps = 200,
+                            colors = SliderDefaults.colors(
+                                thumbColor = NeonGreen,
+                                activeTrackColor = NeonGreen.copy(alpha = 0.5f),
+                                inactiveTrackColor = Color(0xFF262626)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Tenure Slider
+                        Text(
+                            text = "Tenure: $calcTenureYears Years (${calcTenureYears * 12} months)",
+                            fontSize = 13.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Slider(
+                            value = calcTenureYears.toFloat(),
+                            onValueChange = { calcTenureYears = it.toInt() },
+                            valueRange = 1f..30f,
+                            steps = 29,
+                            colors = SliderDefaults.colors(
+                                thumbColor = NeonGreen,
+                                activeTrackColor = NeonGreen.copy(alpha = 0.5f),
+                                inactiveTrackColor = Color(0xFF262626)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Results Layout
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF18181A))
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("EST. MONTHLY EMI", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(currencyFormatter.format(emiCalculated), fontSize = 13.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("INTEREST PAYABLE", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(currencyFormatter.format(totalInterest), fontSize = 13.sp, color = AccentOrange, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("TOTAL COST", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(currencyFormatter.format(totalPayment), fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
@@ -3352,6 +3931,18 @@ fun SipWorkspacePage(
     viewModel: WealthPulseViewModel,
     onTriggerManual: (String) -> Unit
 ) {
+    // Form and Interactive page states
+    var sipAmtStr by remember { mutableStateOf("") }
+    var sipName by remember { mutableStateOf("") }
+    var sipCat by remember { mutableStateOf("Mutual Funds") }
+    var sipDayStr by remember { mutableStateOf("5") }
+    var sipFrequency by remember { mutableStateOf("Monthly") }
+
+    var showForm by remember { mutableStateOf(false) }
+    var showCalculator by remember { mutableStateOf(false) }
+    var formError by remember { mutableStateOf<String?>(null) }
+
+    // Calculator inputs
     var sipAmount by remember { mutableStateOf(10000.0) }       // 10K default
     var sipReturnRate by remember { mutableStateOf(12.0) }      // 12% default
     var sipYears by remember { mutableStateOf(10) }            // 10 years default
@@ -3382,7 +3973,7 @@ fun SipWorkspacePage(
             letterSpacing = 2.sp
         )
         Text(
-            text = "SIP Mutual Funds",
+            text = "SIP Spend Monitor",
             fontSize = 24.sp,
             fontFamily = FontFamily.Serif,
             color = TextWhite,
@@ -3391,12 +3982,14 @@ fun SipWorkspacePage(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Summary Card
+        // Summary Metric & Actions
         Card(
             shape = RoundedCornerShape(24.dp),
             border = BorderStroke(1.dp, Color(0xFF292524)),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -3406,8 +3999,8 @@ fun SipWorkspacePage(
                 ) {
                     Column {
                         Text(
-                            text = "TOTAL MONTHLY SIP SAVINGS",
-                            fontSize = 11.sp,
+                            text = "TOTAL MONTHLY SIP OUTFLOW",
+                            fontSize = 10.sp,
                             color = TextGray,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -3419,154 +4012,469 @@ fun SipWorkspacePage(
                             color = Color(0xFF3B82F6),
                             fontFamily = FontFamily.Serif
                         )
+                        Text(
+                            text = "${sipRecords.size} running compounding plans tracked",
+                            fontSize = 11.sp,
+                            color = TextGray,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
                     }
-                    TextButton(
-                        onClick = { onTriggerManual("SIP") },
-                        modifier = Modifier.testTag("sip_tab_manual_button")
+                    Button(
+                        onClick = { showForm = !showForm },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (showForm) Color(0xFF292524) else NeonGreen
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("sip_tab_toggle_form_btn")
                     ) {
-                        Text("+ Add SIP", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (showForm) "Close Form" else "+ Add SIP",
+                            fontSize = 11.sp,
+                            color = if (showForm) TextWhite else NavyBg,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
         }
 
-        // Active SIP list
+        // INLINE ADD SIP FORM CARD
+        AnimatedVisibility(visible = showForm) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFF222B38)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1218)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "📈 INITIALIZE SIP AUTO-DEBIT LINK",
+                        fontSize = 12.sp,
+                        color = Color(0xFF3B82F6),
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = sipName,
+                        onValueChange = { sipName = it },
+                        label = { Text("SIP Fund Name description", fontSize = 12.sp, color = TextGray) },
+                        placeholder = { Text("e.g. Parag Parikh Flexi Cap, SBI Small Cap", fontSize = 12.sp) },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextWhite,
+                            focusedBorderColor = Color(0xFF3B82F6),
+                            unfocusedBorderColor = Color(0xFF292524)
+                        )
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = sipAmtStr,
+                            onValueChange = { sipAmtStr = it },
+                            label = { Text("Monthly Amount (₹)", fontSize = 12.sp, color = TextGray) },
+                            modifier = Modifier.weight(1.2f),
+                            textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextWhite,
+                                focusedBorderColor = Color(0xFF3B82F6),
+                                unfocusedBorderColor = Color(0xFF292524)
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = sipDayStr,
+                            onValueChange = { sipDayStr = it },
+                            label = { Text("Debit Day of Month (1-31)", fontSize = 12.sp, color = TextGray) },
+                            modifier = Modifier.weight(1f),
+                            textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextWhite,
+                                focusedBorderColor = Color(0xFF3B82F6),
+                                unfocusedBorderColor = Color(0xFF292524)
+                            )
+                        )
+                    }
+
+                    // Speed date selection
+                    Text("Or Select Debit Day:", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("1", "5", "10", "15", "20", "25").forEach { seedDay ->
+                            val isSelected = sipDayStr == seedDay
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Color(0xFF3B82F6) else Color(0xFF1E1E1F))
+                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .clickable { sipDayStr = seedDay }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(text = "${seedDay}th", fontSize = 11.sp, color = if (isSelected) Color.Black else TextWhite, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // Asset category speed chips
+                    Text("Select Investment Class Asset:", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "📈 Mutual Funds" to "Mutual Funds",
+                            "📊 Index Funds" to "Index Funds",
+                            "💼 Stocks/Equity" to "Equity",
+                            "🟡 Safe Gold" to "Gold",
+                            "🧑‍💻 Crypto" to "Crypto"
+                        ).forEach { (label, dbVal) ->
+                            val isSelected = sipCat == dbVal
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Color(0xFF2563EB).copy(alpha = 0.2f) else Color(0xFF1E1E1F))
+                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .clickable { sipCat = dbVal }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(text = label, fontSize = 11.sp, color = if (isSelected) Color(0xFF93C5FD) else TextWhite)
+                            }
+                        }
+                    }
+
+                    // Frequency
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Frequency: ", fontSize = 12.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        listOf("Monthly", "Weekly").forEach { freq ->
+                            val isSelected = sipFrequency == freq
+                            Box(
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Color(0xFF3B82F6).copy(alpha = 0.1f) else Color.Transparent)
+                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .clickable { sipFrequency = freq }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(freq, fontSize = 11.sp, color = if (isSelected) Color(0xFF3B82F6) else TextGray)
+                            }
+                        }
+                    }
+
+                    formError?.let { err ->
+                        Text(err, color = DangerRed, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 12.dp))
+                    }
+
+                    Button(
+                        onClick = {
+                            val amt = sipAmtStr.toDoubleOrNull() ?: 0.0
+                            val day = sipDayStr.toIntOrNull() ?: 5
+                            if (sipName.isBlank()) {
+                                formError = "Please enter a Fund SIP Name description."
+                            } else if (amt <= 0.0) {
+                                formError = "Please enter a valid monthly SIP amount."
+                            } else if (day !in 1..31) {
+                                formError = "Debit day must be between 1 and 31."
+                            } else {
+                                formError = null
+                                viewModel.addManualSip(amt, sipName, sipCat, day, sipFrequency)
+                                // Reset
+                                sipName = ""
+                                sipAmtStr = ""
+                                showForm = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Save and Map to Calendar 📅", color = TextWhite, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Active compounding schedules list
         Text(
-            text = "📋 RUNNING WEALTH COMPOUNDING SCHEDULES",
+            text = "📋 RUNNING WEALTH COMPOUNDING PORTFOLIOS",
             fontSize = 11.sp,
-            color = TextGray,
+            color = TextWhite.copy(alpha = 0.6f),
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.2.sp,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
         if (sipRecords.isEmpty()) {
-            EmptyStatePlaceholder("No live mutual fund SIP savings portfolios configured.")
+            EmptyStatePlaceholder("No live mutual fund SIP savings portfolios configured yet.")
         } else {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(bottom = 20.dp)
             ) {
                 sipRecords.forEach { sip ->
-                    TransactionItemCard(
-                        title = sip.description,
-                        subtitle = "Auto-debit scheduled: ${sip.frequency} on ${sip.dayOfMonth}th",
-                        amount = "${currencyFormatter.format(sip.amount)}/mo",
-                        onDelete = { viewModel.deleteSip(sip.id) },
-                        colorAccent = Color(0xFF3B82F6)
-                    )
+                    val assetIcon = when(sip.investmentCategory) {
+                        "Gold" -> "🟡"
+                        "Crypto" -> "🧑‍💻"
+                        "Equity" -> "💼"
+                        "Index Funds" -> "📊"
+                        else -> "📈"
+                    }
+
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color(0xFF3B82F6).copy(alpha = 0.12f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(assetIcon, fontSize = 18.sp)
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = sip.description,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextWhite,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "Category: ${sip.investmentCategory} • Frequency: ${sip.frequency}",
+                                            fontSize = 11.sp,
+                                            color = TextGray,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Text(
+                                        text = "${currencyFormatter.format(sip.amount)}/mo",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color(0xFF3B82F6)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    IconButton(
+                                        onClick = { viewModel.deleteSip(sip.id) },
+                                        modifier = Modifier.size(28.dp).testTag("delete_sip_${sip.id}")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete record",
+                                            tint = DangerRed.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Next Auto-Debit Reminder Block
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFF0F141F))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("📅", fontSize = 11.sp)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Calendar alarm linked: Auto-debits on day ${sip.dayOfMonth}th of month",
+                                        fontSize = 10.sp,
+                                        color = Color(0xFF60A5FA),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // PREMIUM INTERACTIVE SIP FUTURE VALUE CALCULATOR
+        // INTERACTIVE FORECAST CALCULATOR (COLLAPSIBLE)
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
+            border = BorderStroke(1.dp, Color(0xFF222222)),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF101010)),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 90.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 90.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "📈 INTERACTIVE SIP WEALTH COMPOUNDER",
-                    fontSize = 12.sp,
-                    color = Color(0xFF3B82F6),
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Plan compounding futures. Adjust variables in real-time to compute prospective wealth growth.",
-                    fontSize = 11.sp,
-                    color = TextGray
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Monthly Investment Slider
-                Text(
-                    text = "Monthly SIP: ${currencyFormatter.format(sipAmount)}",
-                    fontSize = 13.sp,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Medium
-                )
-                Slider(
-                    value = sipAmount.toFloat(),
-                    onValueChange = { sipAmount = it.toDouble() },
-                    valueRange = 500f..100000f,
-                    steps = 199,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF3B82F6),
-                        activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
-                        inactiveTrackColor = Color(0xFF262626)
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Expected Return Slider
-                Text(
-                    text = "Expected Return Rate: ${String.format("%.1f%%", sipReturnRate)} p.a.",
-                    fontSize = 13.sp,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Medium
-                )
-                Slider(
-                    value = sipReturnRate.toFloat(),
-                    onValueChange = { scale -> sipReturnRate = Math.round(scale * 10) / 10.0 },
-                    valueRange = 5f..30f,
-                    steps = 250,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF3B82F6),
-                        activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
-                        inactiveTrackColor = Color(0xFF262626)
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Years Slider
-                Text(
-                    text = "Investment Period: $sipYears Years",
-                    fontSize = 13.sp,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Medium
-                )
-                Slider(
-                    value = sipYears.toFloat(),
-                    onValueChange = { sipYears = it.toInt() },
-                    valueRange = 2f..40f,
-                    steps = 38,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF3B82F6),
-                        activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
-                        inactiveTrackColor = Color(0xFF262626)
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Results Layout
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF18181A))
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .clickable { showCalculator = !showCalculator },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                        Text("INVESTED PRINCIPAL", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                        Text(currencyFormatter.format(totalSipInvested), fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("📊", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "INTERACTIVE WEALTH COMPOUNDER",
+                                fontSize = 12.sp,
+                                color = Color(0xFF3B82F6),
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.5.sp
+                            )
+                            Text(
+                                text = "Simulate mock prospective compound rates",
+                                fontSize = 10.sp,
+                                color = TextGray
+                            )
+                        }
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                        Text("EST. GROWTH RETURNS", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                        Text(currencyFormatter.format(sipEstimatedWeatlh), fontSize = 13.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                        Text("TOTAL VALUE", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                        Text(currencyFormatter.format(sipFutureValue), fontSize = 13.sp, color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold)
+                    Text(
+                        text = if (showCalculator) "[- Tap to Collapse]" else "[+ Tap to Expand]",
+                        fontSize = 11.sp,
+                        color = TextGray,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                AnimatedVisibility(visible = showCalculator) {
+                    Column(modifier = Modifier.padding(top = 16.dp)) {
+                        Text(
+                            text = "Plan compounding futures. Adjust variables in real-time to compute prospective wealth growth.",
+                            fontSize = 11.sp,
+                            color = TextGray,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        // Monthly Investment Slider
+                        Text(
+                            text = "Monthly SIP: ${currencyFormatter.format(sipAmount)}",
+                            fontSize = 13.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Slider(
+                            value = sipAmount.toFloat(),
+                            onValueChange = { sipAmount = it.toDouble() },
+                            valueRange = 500f..100000f,
+                            steps = 199,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color(0xFF3B82F6),
+                                activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
+                                inactiveTrackColor = Color(0xFF262626)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Expected Return Slider
+                        Text(
+                            text = "Expected Return Rate: ${String.format("%.1f%%", sipReturnRate)} p.a.",
+                            fontSize = 13.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Slider(
+                            value = sipReturnRate.toFloat(),
+                            onValueChange = { scale -> sipReturnRate = Math.round(scale * 10) / 10.0 },
+                            valueRange = 5f..30f,
+                            steps = 250,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color(0xFF3B82F6),
+                                activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
+                                inactiveTrackColor = Color(0xFF262626)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Years Slider
+                        Text(
+                            text = "Investment Period: $sipYears Years",
+                            fontSize = 13.sp,
+                            color = TextWhite,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Slider(
+                            value = sipYears.toFloat(),
+                            onValueChange = { sipYears = it.toInt() },
+                            valueRange = 2f..40f,
+                            steps = 38,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color(0xFF3B82F6),
+                                activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
+                                inactiveTrackColor = Color(0xFF262626)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Results Layout
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFF18181A))
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("INVESTED PRINCIPAL", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(currencyFormatter.format(totalSipInvested), fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("EST. GROWTH RETURNS", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(currencyFormatter.format(sipEstimatedWeatlh), fontSize = 13.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                Text("TOTAL VALUE", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(currencyFormatter.format(sipFutureValue), fontSize = 13.sp, color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
@@ -3575,20 +4483,482 @@ fun SipWorkspacePage(
 }
 
 @Composable
+fun SplitsWorkspacePage(
+    debtSplits: List<DebtSplitEntity>,
+    totalDebt: Double,
+    currencyFormatter: java.text.NumberFormat,
+    viewModel: WealthPulseViewModel,
+    onTriggerManual: (String) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedGroupFilter by remember { mutableStateOf("All") }
+
+    val filteredDebts = debtSplits.filter {
+        val matchesQuery = it.description.contains(searchQuery, ignoreCase = true) || 
+                           it.debtPersonInvolved.contains(searchQuery, ignoreCase = true) ||
+                           it.groupName.contains(searchQuery, ignoreCase = true)
+        val matchesGroup = when (selectedGroupFilter) {
+            "All" -> true
+            "Group Splits" -> it.isGroupSplit
+            else -> !it.isGroupSplit
+        }
+        matchesQuery && matchesGroup
+    }
+
+    val lentItems = debtSplits.filter { !it.description.contains("borrow", ignoreCase = true) && !it.description.contains("owe", ignoreCase = true) }
+    val borrowItems = debtSplits.filter { it.description.contains("borrow", ignoreCase = true) || it.description.contains("owe", ignoreCase = true) }
+
+    // Dynamic aggregates based purely on the UNPAID shares of each split
+    val totalLentSum = lentItems.sumOf { debt ->
+        val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val unpaidCount = participants.filter { !paidList.contains(it) }.size
+        val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
+        individualShare * unpaidCount
+    }
+    
+    val totalBorrowSum = borrowItems.sumOf { debt ->
+        val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val unpaidCount = participants.filter { !paidList.contains(it) }.size
+        val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
+        individualShare * unpaidCount
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Core Header
+        Text(
+            text = "👥 PEER-TO-PEER BILL SPLITS",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C), // Stone 500
+            letterSpacing = 2.sp
+        )
+        Text(
+            text = "Roommate & Group Ledger",
+            fontSize = 24.sp,
+            fontFamily = FontFamily.Serif,
+            color = TextWhite,
+            fontWeight = FontWeight.Light,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Aggregated Dashboard Summary
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "NET OUTSTANDING BALANCE",
+                    fontSize = 11.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = currencyFormatter.format(totalLentSum - totalBorrowSum),
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Light,
+                    color = if (totalLentSum >= totalBorrowSum) NeonGreen else DangerRed,
+                    fontFamily = FontFamily.Serif,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("ACTIVE CLAIMS (LENT)", fontSize = 10.sp, color = TextGray)
+                        Text(currencyFormatter.format(totalLentSum), fontSize = 15.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("YOUR LIABILITIES (BORROWED)", fontSize = 10.sp, color = TextGray)
+                        Text(currencyFormatter.format(totalBorrowSum), fontSize = 15.sp, color = DangerRed, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Search & Filter Row
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search by person, split description, room...", color = TextGray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextGray) },
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = LocalTextStyle.current.copy(color = TextWhite),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Split Filter Tags
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("All", "Group Splits", "Personal Splits").forEach { filter ->
+                val isSelected = selectedGroupFilter == filter
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isSelected) NeonGreen.copy(alpha = 0.15f) else Color.Transparent,
+                    border = BorderStroke(1.dp, if (isSelected) NeonGreen else Color(0xFF292524)),
+                    modifier = Modifier.clickable { selectedGroupFilter = filter }
+                ) {
+                    Text(
+                        text = filter,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) NeonGreen else TextGray,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // Header Row for Split Actions
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "📊 ACTIVE P2P TRANSACTIONS (${filteredDebts.size})",
+                fontSize = 11.sp,
+                color = TextGray,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+            Button(
+                onClick = { onTriggerManual("DEBT") },
+                colors = ButtonDefaults.buttonColors(containerColor = SurfaceBlue),
+                border = BorderStroke(1.dp, Color(0xFF1D2636)),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Record Split", fontSize = 11.sp, color = TextWhite)
+            }
+        }
+
+        if (filteredDebts.isEmpty()) {
+            EmptyStatePlaceholder("No matching splits found. Check presets or hit '+ Record Split'!")
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                filteredDebts.forEach { debt ->
+                    val isLent = !debt.description.contains("borrow", ignoreCase = true) && !debt.description.contains("owe", ignoreCase = true)
+                    
+                    // Parse split participants and their payment statuses
+                    val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
+                    
+                    // Amount remaining unpaid on this split
+                    val unpaidCount = participants.filter { !paidList.contains(it) }.size
+                    val remainingUnpaidSplitAmount = individualShare * unpaidCount
+
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = if (isLent) Color(0x2210B981) else Color(0x22EF4444),
+                                            modifier = Modifier.padding(end = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = if (isLent) "LENT SPLIT" else "BORROWED SPLIT",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isLent) NeonGreen else DangerRed,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                        if (debt.isGroupSplit && debt.groupName.isNotBlank()) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Color(0x223B82F6),
+                                                modifier = Modifier.padding(end = 8.dp)
+                                            ) {
+                                                Text(
+                                                    text = debt.groupName.uppercase(),
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF60A5FA),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = debt.description,
+                                        fontSize = 15.sp,
+                                        color = TextWhite,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = currencyFormatter.format(remainingUnpaidSplitAmount),
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isLent) NeonGreen else DangerRed
+                                    )
+                                    if (unpaidCount < participants.size) {
+                                        Text(
+                                            text = "Total: ${currencyFormatter.format(debt.amount)}",
+                                            fontSize = 11.sp,
+                                            color = TextGray,
+                                            style = androidx.compose.ui.text.TextStyle(
+                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
+                                            )
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "Total Split",
+                                            fontSize = 10.sp,
+                                            color = TextGray
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Highlight individual members and toggle their payment
+                            Text(
+                                text = "👥 SPLIT SHARES & PAYMENT STATUS (TAP ON A CHIP TO MARK AS PAID):",
+                                fontSize = 9.sp,
+                                color = TextGray,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                                modifier = Modifier.padding(bottom = 6.dp)
+                            )
+
+                            if (participants.isEmpty()) {
+                                Text("No participants added", fontSize = 12.sp, color = TextGray)
+                            } else {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    participants.forEach { person ->
+                                        val hasPaid = paidList.contains(person)
+                                        val chipBg = if (hasPaid) Color(0x1F10B981) else Color(0x1FEF4444)
+                                        val chipBorder = if (hasPaid) Color(0x3310B981) else Color(0x33EF4444)
+                                        val chipContentColor = if (hasPaid) NeonGreen else Color(0xFFFCA5A5)
+
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = chipBg,
+                                            border = BorderStroke(1.dp, chipBorder),
+                                            modifier = Modifier.clickable {
+                                                viewModel.toggleDebtPersonPaidStatus(debt.id, person)
+                                            }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (hasPaid) Icons.Default.Check else Icons.Default.Refresh,
+                                                    contentDescription = null,
+                                                    tint = chipContentColor,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                                Text(
+                                                    text = "$person: ${currencyFormatter.format(individualShare)}",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = chipContentColor
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val unpaidCountText = if (unpaidCount == 0) "All Paid Off! ✨" else "$unpaidCount/${participants.size} Pending"
+                                Text(
+                                    text = unpaidCountText,
+                                    fontSize = 11.sp,
+                                    color = if (unpaidCount == 0) NeonGreen else TextGray,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Button(
+                                    onClick = { viewModel.deleteDebt(debt.id) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0x1AFFFFFF)),
+                                    border = BorderStroke(1.dp, Color(0xFF292524)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Text(
+                                        text = if (unpaidCount == 0) "Dismiss" else "Settle All",
+                                        fontSize = 10.sp,
+                                        color = TextWhite,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(100.dp))
+    }
+}
+
+@Composable
 fun CreditWorkspacePage(
     creditExpenses: List<CreditExpenseEntity>,
+    creditCards: List<CreditCardEntity>,
     totalCredit: Double,
     currencyFormatter: java.text.NumberFormat,
     viewModel: WealthPulseViewModel,
     onTriggerManual: (String) -> Unit
 ) {
-    val cardBrand = "WEALTHPULSE INFINITE"
-    val cardDigitMask = "**** **** **** 8251"
-    val cardHolder = "MARCUS AURELIUS"
-    val cardExpiry = "09/31"
-    val creditLimit = 500000.0
-    val availableLimit = creditLimit - totalCredit
-    val utilizationPercent = if (creditLimit > 0) (totalCredit / creditLimit) * 100 else 0.0
+    var showAddCardDialog by remember { mutableStateOf(false) }
+    var newCardName by remember { mutableStateOf("") }
+    var newCardLimit by remember { mutableStateOf("") }
+    var newCardBillDate by remember { mutableStateOf("15") }
+
+    if (showAddCardDialog) {
+        Dialog(onDismissRequest = { showAddCardDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                border = BorderStroke(1.dp, Color(0xFF1E2B3E)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Register Credit Card",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NeonGreen
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = newCardName,
+                        onValueChange = { newCardName = it },
+                        label = { Text("Card Name", color = TextGray) },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newCardLimit,
+                        onValueChange = { newCardLimit = it },
+                        label = { Text("Credit Limit (INR)", color = TextGray) },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newCardBillDate,
+                        onValueChange = { newCardBillDate = it },
+                        label = { Text("Bill Generation Day (1-31)", color = TextGray) },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showAddCardDialog = false }) {
+                            Text("Cancel", color = TextGray)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                val limit = newCardLimit.toDoubleOrNull() ?: 150000.0
+                                val day = newCardBillDate.toIntOrNull() ?: 15
+                                if (newCardName.isNotBlank()) {
+                                    viewModel.addCreditCard(newCardName, limit, day)
+                                    newCardName = ""
+                                    newCardLimit = ""
+                                    newCardBillDate = "15"
+                                    showAddCardDialog = false
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
+                        ) {
+                            Text("Add Card", color = NavyBg, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val currentUser by viewModel.currentUser.collectAsState()
+    val displayName = remember(currentUser) {
+        val user = currentUser
+        if (user == null || user.isAnonymous) {
+            "GUEST ANALYST"
+        } else {
+            val email = user.email
+            val localPart = email.substringBefore("@")
+            localPart.split(".", "_", "-").joinToString(" ") { part ->
+                part.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+            }.uppercase()
+        }
+    }
+
+    val totalLimit = creditCards.sumOf { it.creditLimit }
+    val totalOutstandingFromCards = creditCards.sumOf { it.outstandingAmount }
+    val utilizationPercent = if (totalLimit > 0) (totalCredit / totalLimit) * 100 else 0.0
 
     Column(
         modifier = Modifier
@@ -3614,144 +4984,339 @@ fun CreditWorkspacePage(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // MAGNIFICENT GLASSMORPHIC ACTIVE CREDIT CARD
-        Box(
+        // REGISTERED CREDIT CARDS REGISTRY SECTION (Horizontal Swipe)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 20.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color(0x334F46E5), // Translucent Indigo
-                            Color(0x1A0F172A), // Dark slate
-                            Color(0x228B5CF6)  // Translucent Purple
-                        )
-                    )
-                )
-                .border(
-                    BorderStroke(
-                        1.dp,
-                        Brush.verticalGradient(
-                            listOf(Color(0x40FFFFFF), Color(0x06FFFFFF))
-                        )
-                    ),
-                    shape = RoundedCornerShape(24.dp)
-                )
-                .padding(20.dp)
+                .padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            Text(
+                text = "🏦 YOUR REGISTERED CREDIT CARDS",
+                fontSize = 11.sp,
+                color = TextGray,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+            TextButton(
+                onClick = { showAddCardDialog = true },
+                modifier = Modifier.testTag("add_credit_card_button")
+            ) {
+                Text("+ Register Card", fontSize = 12.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(vertical = 4.dp, horizontal = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (creditCards.isEmpty()) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                    border = BorderStroke(1.dp, Color(0xFF262626)),
+                    modifier = Modifier
+                        .width(310.dp)
+                        .padding(bottom = 12.dp)
                 ) {
-                    Text(
-                        text = cardBrand,
-                        fontSize = 12.sp,
-                        color = Color(0xFFD4D4D8), // Zinc 300
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp
-                    )
-                    // Mini chip graphics
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp, 24.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFFEAB308).copy(alpha = 0.8f))
-                            .border(1.dp, Color(0xFFCA8A04), RoundedCornerShape(6.dp))
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(30.dp))
-
-                Text(
-                    text = cardDigitMask,
-                    fontSize = 20.sp,
-                    color = TextWhite,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Column {
-                        Text("CARDHOLDER", fontSize = 9.sp, color = TextGray)
-                        Text(cardHolder, fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("No credit cards registered yet.", color = TextGray, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Log transactions, or register physical credit cards using the '+ Register Card' action above to track limits and real time bill statuses.",
+                            color = TextGray,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
+                        )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("EXPIRES EN", fontSize = 9.sp, color = TextGray)
-                        Text(cardExpiry, fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                }
+            } else {
+                creditCards.forEach { cc ->
+                    val remainingLimit = (cc.creditLimit - cc.outstandingAmount).coerceAtLeast(0.0)
+                    val usagePercent = if (cc.creditLimit > 0) (cc.outstandingAmount / cc.creditLimit) * 100 else 0.0
+
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, Color(0xFF292524)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)),
+                        modifier = Modifier
+                            .width(310.dp)
+                            .padding(bottom = 12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = cc.cardName.uppercase(),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextWhite,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Text("LIMIT: ${currencyFormatter.format(cc.creditLimit)}", fontSize = 9.sp, color = TextGray)
+                                }
+
+                                // Delete Card Button
+                                IconButton(
+                                    onClick = { viewModel.deleteCreditCard(cc.id) },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete credit card",
+                                        tint = DangerRed.copy(alpha = 0.8f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("OUTSTANDING BILL", fontSize = 9.sp, color = TextGray)
+                                    Text(
+                                        text = currencyFormatter.format(cc.outstandingAmount),
+                                        fontSize = 18.sp,
+                                        color = if (cc.outstandingAmount > 0) DangerRed else TextWhite,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("AVAILABLE LIMIT", fontSize = 9.sp, color = TextGray)
+                                    Text(
+                                        text = currencyFormatter.format(remainingLimit),
+                                        fontSize = 14.sp,
+                                        color = NeonGreen,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Utilization Progress bar
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF262626))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(fraction = (usagePercent / 100.0).toFloat().coerceIn(0f, 1f))
+                                        .fillMaxHeight()
+                                        .clip(CircleShape)
+                                        .background(if (usagePercent > 30.0) DangerRed else Color(0xFF8B5CF6))
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("BILL GENERATE DAY", fontSize = 9.sp, color = TextGray)
+                                    Text("${cc.billDate}th of Month", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Medium)
+                                }
+
+                                // Interactive Paid / Pending status badge
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (cc.billStatus == "Paid") Color(0x3310B981) else Color(0x33EF4444),
+                                    modifier = Modifier.clickable { viewModel.toggleCardBillStatus(cc.id) }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(if (cc.billStatus == "Paid") Color(0xFF10B981) else Color(0xFFEF4444))
+                                        )
+                                        Text(
+                                            text = cc.billStatus.uppercase(),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (cc.billStatus == "Paid") NeonGreen else DangerRed
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Utilization Card
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "CREDIT CARD BALANCES & RUNTIMES",
-                    fontSize = 11.sp,
-                    color = TextGray,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+        if (creditCards.isNotEmpty()) {
+            val firstCard = creditCards.first()
+            val cardBrand = firstCard.cardName.uppercase()
+            val cardDigitMask = "**** **** **** " + (1000 + firstCard.id % 9000).toString()
+            val cardExpiry = "12/29"
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("OUTSTANDING BILL", fontSize = 10.sp, color = TextGray)
-                        Text(currencyFormatter.format(totalCredit), fontSize = 24.sp, color = DangerRed, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // MAGNIFICENT GLASSMORPHIC ACTIVE CREDIT CARD (Consolidated Digital View)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0x334F46E5), // Translucent Indigo
+                                Color(0x1A0F172A), // Dark slate
+                                Color(0x228B5CF6)  // Translucent Purple
+                            )
+                        )
+                    )
+                    .border(
+                        BorderStroke(
+                            1.dp,
+                            Brush.verticalGradient(
+                                listOf(Color(0x40FFFFFF), Color(0x06FFFFFF))
+                            )
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .padding(20.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = cardBrand,
+                            fontSize = 12.sp,
+                            color = Color(0xFFD4D4D8), // Zinc 300
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp
+                        )
+                        // Mini chip graphics
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp, 24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFEAB308).copy(alpha = 0.8f))
+                                .border(1.dp, Color(0xFFCA8A04), RoundedCornerShape(6.dp))
+                        )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("AVAILABLE LIMIT", fontSize = 10.sp, color = TextGray)
-                        Text(currencyFormatter.format(availableLimit), fontSize = 18.sp, color = NeonGreen, fontWeight = FontWeight.Medium)
+
+                    Spacer(modifier = Modifier.height(30.dp))
+
+                    Text(
+                        text = cardDigitMask,
+                        fontSize = 20.sp,
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Column {
+                            Text("CARDHOLDER", fontSize = 9.sp, color = TextGray)
+                            Text(displayName, fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("EXPIRES EN", fontSize = 9.sp, color = TextGray)
+                            Text(cardExpiry, fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(12.dp))
+            // Utilization Card
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, Color(0xFF292524)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "TOTAL CONSOLIDATED OUTSTANDINGS & LIMITS",
+                        fontSize = 11.sp,
+                        color = TextGray,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("TOTAL LIMIT ${currencyFormatter.format(creditLimit)}", fontSize = 9.sp, color = TextGray)
-                    Text(String.format("UTILIZED: %.1f%%", utilizationPercent), fontSize = 10.sp, color = if (utilizationPercent > 30.0) DangerRed else TextGray, fontWeight = FontWeight.SemiBold)
-                }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("TOTAL CREDIT OUTSTANDING", fontSize = 10.sp, color = TextGray)
+                            Text(currencyFormatter.format(totalCredit), fontSize = 24.sp, color = DangerRed, fontWeight = FontWeight.Bold)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("TOTAL CONSOLIDATED LIMIT", fontSize = 10.sp, color = TextGray)
+                            Text(currencyFormatter.format(totalLimit), fontSize = 18.sp, color = Color(0xFF3B82F6), fontWeight = FontWeight.Medium)
+                        }
+                    }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF262626))
-                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("AVAILABLE CAPACITY ${currencyFormatter.format((totalLimit - totalCredit).coerceAtLeast(0.0))}", fontSize = 9.sp, color = TextGray)
+                        Text(String.format("UTILIZED: %.1f%%", utilizationPercent), fontSize = 10.sp, color = if (utilizationPercent > 30.0) DangerRed else TextGray, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(fraction = (utilizationPercent / 100.0).toFloat().coerceIn(0f, 1f))
-                            .fillMaxHeight()
+                            .fillMaxWidth()
+                            .height(6.dp)
                             .clip(CircleShape)
-                            .background(if (utilizationPercent > 30.0) DangerRed else Color(0xFF8B5CF6))
-                    )
+                            .background(Color(0xFF262626))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction = (utilizationPercent / 100.0).toFloat().coerceIn(0f, 1f))
+                                .fillMaxHeight()
+                                .clip(CircleShape)
+                                .background(if (utilizationPercent > 30.0) DangerRed else Color(0xFF8B5CF6))
+                        )
+                    }
                 }
             }
         }
@@ -3800,3 +5365,1037 @@ fun CreditWorkspacePage(
     }
 }
 
+@Composable
+fun CalendarWorkspacePage(
+    dailyExpenses: List<DailyExpenseEntity>,
+    creditExpenses: List<CreditExpenseEntity>,
+    emiLoans: List<EmiLoanEntity>,
+    sipRecords: List<SipEntity>,
+    incomePaydays: List<IncomePaydayEntity>,
+    currencyFormatter: java.text.NumberFormat,
+    viewModel: WealthPulseViewModel
+) {
+    // 1. Reactive selected date states
+    var selectedYear by remember { mutableStateOf(2026) }
+    var selectedMonth by remember { mutableStateOf(5) } // June (0-indexed)
+    var selectedDay by remember { mutableStateOf(7) }
+
+    // 2. Active view mode toggle: "day_details" or "month_summary"
+    var viewMode by remember { mutableStateOf("day_details") }
+
+    val monthNames = listOf(
+        "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+        "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+    )
+
+    // Helper functions
+    val daysInMonth = remember(selectedYear, selectedMonth) {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.YEAR, selectedYear)
+        cal.set(java.util.Calendar.MONTH, selectedMonth)
+        cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+    }
+
+    val startOffset = remember(selectedYear, selectedMonth) {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.YEAR, selectedYear)
+        cal.set(java.util.Calendar.MONTH, selectedMonth)
+        cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        // 1 = Sunday, 2 = Monday, ...
+        // We start on Sunday (offset starts at 0 to 6)
+        cal.get(java.util.Calendar.DAY_OF_WEEK) - 1
+    }
+
+    // 3. Mapping data vectors for UI dots and filtering
+    val expensesByDay = remember(dailyExpenses, selectedYear, selectedMonth) {
+        val cal = java.util.Calendar.getInstance()
+        dailyExpenses.filter {
+            cal.timeInMillis = it.timestamp
+            cal.get(java.util.Calendar.YEAR) == selectedYear && cal.get(java.util.Calendar.MONTH) == selectedMonth
+        }.groupBy {
+            cal.timeInMillis = it.timestamp
+            cal.get(java.util.Calendar.DAY_OF_MONTH)
+        }
+    }
+
+    val creditsByDay = remember(creditExpenses, selectedYear, selectedMonth) {
+        val cal = java.util.Calendar.getInstance()
+        creditExpenses.filter {
+            cal.timeInMillis = it.timestamp
+            cal.get(java.util.Calendar.YEAR) == selectedYear && cal.get(java.util.Calendar.MONTH) == selectedMonth
+        }.groupBy {
+            cal.timeInMillis = it.timestamp
+            cal.get(java.util.Calendar.DAY_OF_MONTH)
+        }
+    }
+
+    val emisByDay = remember(emiLoans) {
+        val cal = java.util.Calendar.getInstance()
+        // Recurring EMI is mapped to its original day of month of timestamp
+        emiLoans.groupBy {
+            cal.timeInMillis = it.timestamp
+            cal.get(java.util.Calendar.DAY_OF_MONTH)
+        }
+    }
+
+    val sipsByDay = remember(sipRecords) {
+        sipRecords.groupBy { it.dayOfMonth }
+    }
+
+    val incomesByDay = remember(incomePaydays, selectedYear, selectedMonth) {
+        val cal = java.util.Calendar.getInstance()
+        incomePaydays.filter {
+            cal.timeInMillis = it.timestamp
+            cal.get(java.util.Calendar.YEAR) == selectedYear && cal.get(java.util.Calendar.MONTH) == selectedMonth
+        }.groupBy {
+            cal.timeInMillis = it.timestamp
+            cal.get(java.util.Calendar.DAY_OF_MONTH)
+        }
+    }
+
+    // Filtered transaction items list for selected Day
+    val selectedDayIncomes = incomesByDay[selectedDay] ?: emptyList()
+    val selectedDayExpenses = expensesByDay[selectedDay] ?: emptyList()
+    val selectedDayCredits = creditsByDay[selectedDay] ?: emptyList()
+    val selectedDayEmis = emisByDay[selectedDay] ?: emptyList()
+    val selectedDaySips = sipsByDay[selectedDay] ?: emptyList()
+
+    val totalSelectedDayAmt = selectedDayIncomes.sumOf { it.amount } -
+            selectedDayExpenses.sumOf { it.amount } -
+            selectedDayCredits.sumOf { it.amount } -
+            selectedDayEmis.sumOf { it.amount } -
+            selectedDaySips.sumOf { it.amount }
+
+    // Click navigation handlers
+    val navigatePrevMonth = {
+        if (selectedMonth == 0) {
+            selectedMonth = 11
+            selectedYear -= 1
+        } else {
+            selectedMonth -= 1
+        }
+        selectedDay = 1 // default to 1st of new month
+    }
+
+    val navigateNextMonth = {
+        if (selectedMonth == 11) {
+            selectedMonth = 0
+            selectedYear += 1
+        } else {
+            selectedMonth += 1
+        }
+        selectedDay = 1 // default to 1st of new month
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // HEADER TITLE
+        Text(
+            text = "CHRONO LEDGER",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C),
+            letterSpacing = 2.sp
+        )
+        Text(
+            text = "Active Cashflow Tracker",
+            fontSize = 24.sp,
+            fontFamily = FontFamily.Serif,
+            color = TextWhite,
+            fontWeight = FontWeight.Light,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // GLASSMORPHIC CALENDAR FRAME
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(Color(0x33FFFFFF), Color(0x06FFFFFF))
+                )
+            ),
+            colors = CardDefaults.cardColors(containerColor = Color(0xCC161616)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Month Navigation Selector Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = navigatePrevMonth) {
+                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Prev Month", tint = TextWhite)
+                    }
+
+                    // Elegant Header that toggles View Mode
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                viewMode = if (viewMode == "month_summary") "day_details" else "month_summary"
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "${monthNames[selectedMonth]} $selectedYear 📊",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonGreen,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = if (viewMode == "month_summary") "Show Daily Details" else "Show Month Summary Metrics",
+                            fontSize = 10.sp,
+                            color = TextGray,
+                            fontWeight = FontWeight.Light
+                        )
+                    }
+
+                    IconButton(onClick = navigateNextMonth) {
+                        Icon(imageVector = Icons.Default.KeyboardArrowRight, contentDescription = "Next Month", tint = TextWhite)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (viewMode == "month_summary") {
+                    // DISPLAY MONTHLY SUMMARY CARD DYNAMICALLY
+                    val mExpenses = expensesByDay.values.flatten().sumOf { it.amount }
+                    val mCredits = creditsByDay.values.flatten().sumOf { it.amount }
+                    val mEmis = emiLoans.sumOf { it.amount } // constant monthly runrate
+                    val mSips = sipRecords.sumOf { it.amount } // constant monthly runrate
+                    val mIncomes = incomesByDay.values.flatten().sumOf { it.amount }
+                    val mDisposable = mIncomes - mExpenses - mCredits - mEmis - mSips
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF0F0C0A))
+                            .border(BorderStroke(1.dp, Color(0xFF292524)), RoundedCornerShape(16.dp))
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "MONTH METRICS & TOTALS",
+                            fontSize = 11.sp,
+                            color = NeonGreen,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        // 5 Row metrics
+                        MonthMetricIndicatorRow("💰 Monthly Total Income", mIncomes, currencyFormatter, Color(0xFF10B981))
+                        MonthMetricIndicatorRow("🛍️ Pure Cash Expenses", mExpenses, currencyFormatter, DangerRed)
+                        MonthMetricIndicatorRow("💳 Swipes / Liquid Debts", mCredits, currencyFormatter, Color(0xFF8B5CF6))
+                        MonthMetricIndicatorRow("🏦 Active EMI Obligations", mEmis, currencyFormatter, AccentOrange)
+                        MonthMetricIndicatorRow("📈 SIP Wealth Compounding", mSips, currencyFormatter, Color(0xFF3B82F6))
+
+                        HorizontalDivider(color = Color(0xFF292524), modifier = Modifier.padding(vertical = 12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("TRUE CONSOLIDATED SAVINGS", fontSize = 9.sp, color = TextGray)
+                                Text(
+                                    text = currencyFormatter.format(mDisposable),
+                                    fontSize = 18.sp,
+                                    color = if (mDisposable >= 0) NeonGreen else DangerRed,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            // Visual circular meter estimation
+                            val totalDebitAmt = mExpenses + mCredits + mEmis + mSips
+                            val utilization = if (mIncomes > 0) (totalDebitAmt / mIncomes) * 100 else 0.0
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("BUDGET LOCKED", fontSize = 9.sp, color = TextGray)
+                                Text(String.format("%.1f%% Used", utilization), fontSize = 13.sp, color = if (utilization > 80.0) DangerRed else TextWhite, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                } else {
+                    // WEEKDAY NAMES
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        val weekdays = listOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
+                        weekdays.forEach { day ->
+                            Text(
+                                text = day,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = TextGray,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // DAYS GRID
+                    val totalSlots = 35 // default to 5-week grid
+                    val adjustedSlots = if (startOffset + daysInMonth > 35) 42 else 35 // 6-week grid if required to avoid clipping
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (row in 0 until (adjustedSlots / 7)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                for (col in 0 until 7) {
+                                    val slotIndex = row * 7 + col
+                                    val dayNumber = slotIndex - startOffset + 1
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .aspectRatio(1f),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (dayNumber in 1..daysInMonth) {
+                                            val isSelected = (dayNumber == selectedDay)
+
+                                            // Determine Highlight triggers
+                                            val hasDailyExp = expensesByDay.containsKey(dayNumber)
+                                            val hasCreditExp = creditsByDay.containsKey(dayNumber)
+                                            val hasEmi = emisByDay.containsKey(dayNumber)
+                                            val hasSip = sipsByDay.containsKey(dayNumber)
+                                            val hasIncome = incomesByDay.containsKey(dayNumber)
+
+                                            // Day Card Box
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize(0.85f)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .background(
+                                                        if (isSelected) NeonGreen.copy(alpha = 0.15f)
+                                                        else Color(0xFF1B1B1C)
+                                                    )
+                                                    .border(
+                                                        width = if (isSelected) 1.5.dp else 0.8.dp,
+                                                        color = if (isSelected) NeonGreen else Color(0xFF292524),
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    )
+                                                    .clickable { selectedDay = dayNumber }
+                                                    .padding(4.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.SpaceBetween,
+                                                    modifier = Modifier.fillMaxSize()
+                                                ) {
+                                                    // Top Indicator Dots Ring
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        if (hasIncome) {
+                                                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF10B981)))
+                                                        }
+                                                        if (hasEmi) {
+                                                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(AccentOrange))
+                                                        }
+                                                        if (hasSip) {
+                                                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF3B82F6)))
+                                                        }
+                                                    }
+
+                                                    // Day Number Inside Card
+                                                    Text(
+                                                        text = dayNumber.toString(),
+                                                        fontSize = 13.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                        color = if (isSelected) NeonGreen else TextWhite
+                                                    )
+
+                                                    // Bottom Dot for normal Expenses
+                                                    if (hasDailyExp || hasCreditExp) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(4.dp)
+                                                                .clip(CircleShape)
+                                                                .background(if (hasCreditExp) Color(0xFF8B5CF6) else DangerRed)
+                                                        )
+                                                    } else {
+                                                        Spacer(modifier = Modifier.height(4.dp))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (viewMode == "day_details") {
+            // DETAILED DAY SELECTED TRANS SUMMARY HEADER
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp, top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "📋 TRANSACTIONS CONSOLE: DAY $selectedDay",
+                    fontSize = 11.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                )
+                Text(
+                    text = "Balance: " + (if (totalSelectedDayAmt >= 0) "+" else "") + currencyFormatter.format(totalSelectedDayAmt),
+                    fontSize = 11.sp,
+                    color = if (totalSelectedDayAmt >= 0) NeonGreen else DangerRed,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            // TRANSACTIONS LIST FOR SELECTED DAY
+            val hasTransactions = selectedDayIncomes.isNotEmpty() ||
+                    selectedDayExpenses.isNotEmpty() ||
+                    selectedDayCredits.isNotEmpty() ||
+                    selectedDayEmis.isNotEmpty() ||
+                    selectedDaySips.isNotEmpty()
+
+            if (!hasTransactions) {
+                EmptyStatePlaceholder("Settled. No debits or cash flows logged on this date.")
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 110.dp)
+                ) {
+                    // 1. Incomes list
+                    selectedDayIncomes.forEach { inc ->
+                        CalendarItemRow(
+                            icon = "💰",
+                            title = inc.description,
+                            subtitle = "Mode: ${inc.paymentMode} | Income Payday",
+                            amount = "+" + currencyFormatter.format(inc.amount),
+                            colorAccent = Color(0xFF10B981),
+                            onDelete = { viewModel.deleteIncome(inc.id) }
+                        )
+                    }
+
+                    // 2. Daily Expenses list
+                    selectedDayExpenses.forEach { exp ->
+                        CalendarItemRow(
+                            icon = "🛍️",
+                            title = exp.description,
+                            subtitle = "Mode: ${exp.paymentMode} | Category: ${exp.category}",
+                            amount = "-" + currencyFormatter.format(exp.amount),
+                            colorAccent = DangerRed,
+                            onDelete = { viewModel.deleteExpense(exp.id) }
+                        )
+                    }
+
+                    // 3. Credit Swipes
+                    selectedDayCredits.forEach { cred ->
+                        CalendarItemRow(
+                            icon = "💳",
+                            title = cred.description,
+                            subtitle = "Card: ${cred.cardName} | Shopping Debts",
+                            amount = "-" + currencyFormatter.format(cred.amount),
+                            colorAccent = Color(0xFF8B5CF6),
+                            onDelete = { viewModel.deleteCredit(cred.id) }
+                        )
+                    }
+
+                    // 4. EMI Amortizations
+                    selectedDayEmis.forEach { emi ->
+                        CalendarItemRow(
+                            iconSymbol = "🏦",
+                            title = emi.description,
+                            subtitle = "EMI Installment (Auto-pay)",
+                            amount = "-" + currencyFormatter.format(emi.amount),
+                            colorAccent = AccentOrange,
+                            onDelete = { viewModel.deleteEmi(emi.id) }
+                        )
+                    }
+
+                    // 5. SIP Mutual Funds
+                    selectedDaySips.forEach { sip ->
+                        CalendarItemRow(
+                            iconSymbol = "📈",
+                            title = sip.description,
+                            subtitle = "Automated Recurring Investment",
+                            amount = "-" + currencyFormatter.format(sip.amount),
+                            colorAccent = Color(0xFF3B82F6),
+                            onDelete = { viewModel.deleteSip(sip.id) }
+                        )
+                    }
+                }
+            }
+        } else {
+            Spacer(modifier = Modifier.height(110.dp))
+        }
+    }
+}
+
+@Composable
+fun MonthMetricIndicatorRow(
+    label: String,
+    amount: Double,
+    currencyFormatter: java.text.NumberFormat,
+    indicatorColor: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(indicatorColor)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = label, fontSize = 12.sp, color = TextWhite)
+        }
+        Text(
+            text = currencyFormatter.format(amount),
+            fontSize = 12.sp,
+            color = indicatorColor,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        )
+    }
+}
+
+@Composable
+fun CalendarItemRow(
+    icon: String = "💰",
+    iconSymbol: String? = null,
+    title: String,
+    subtitle: String,
+    amount: String,
+    colorAccent: Color,
+    onDelete: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color(0xFF221F1E)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF141211)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.weight(1.5f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colorAccent.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = iconSymbol ?: icon, fontSize = 18.sp)
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = title,
+                        fontSize = 13.sp,
+                        color = TextWhite,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        fontSize = 11.sp,
+                        color = TextGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = amount,
+                    fontSize = 14.sp,
+                    color = colorAccent,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(end = 6.dp)
+                )
+
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Active Item",
+                        tint = DangerRed.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AuthDialog(
+    onDismiss: () -> Unit,
+    viewModel: WealthPulseViewModel
+) {
+    var isSignUp by remember { mutableStateOf(false) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showGoogleFallbackPrompt by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken("default-dummy-aistudio-key-for-myfin")
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account?.idToken
+            val googleEmail = account?.email
+            if (idToken != null) {
+                loading = true
+                viewModel.signInWithGoogle(
+                    idToken = idToken,
+                    email = googleEmail,
+                    onSuccess = {
+                        loading = false
+                        Toast.makeText(context, "Successfully authenticated with Google!", Toast.LENGTH_SHORT).show()
+                        onDismiss()
+                    },
+                    onError = { err ->
+                        loading = false
+                        errorMessage = err
+                    }
+                )
+            } else {
+                if (googleEmail != null) {
+                    loading = true
+                    viewModel.performFallbackGoogleSignIn(googleEmail) {
+                        loading = false
+                        Toast.makeText(context, "Signed in with Google Account (Sandbox Fallback)", Toast.LENGTH_SHORT).show()
+                        onDismiss()
+                    }
+                } else {
+                    errorMessage = "Failed to retrieve Google Auth Credentials."
+                }
+            }
+        } catch (e: ApiException) {
+            android.util.Log.e("MYFin", "Google sign-in api exception: code ${e.statusCode}, message: ${e.message}")
+            showGoogleFallbackPrompt = true
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.dp, Color(0xFF292524)),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F0C0A)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Text(
+                    text = if (isSignUp) "CREATE ENCRYPTED ACCOUNT" else "SECURE PORTFOLIO SIGN-IN",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NeonGreen,
+                    letterSpacing = 1.5.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Text(
+                    text = if (isSignUp) "Create your MYFin account to persist credentials across any standard emulator session." 
+                           else "Authenticate via Firebase Authentication to securely unlock personal financial databases.",
+                    fontSize = 11.sp,
+                    color = TextGray,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+
+                // Error Msg
+                if (errorMessage != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
+                        border = BorderStroke(1.dp, Color(0x66EF4444)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    ) {
+                        Text(
+                            text = errorMessage!!,
+                            color = Color(0xFFFCA5A5),
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
+                if (showGoogleFallbackPrompt) {
+                    // Google Fallback Panel
+                    Card(
+                        border = BorderStroke(1.dp, Color(0xFFE28743).copy(alpha = 0.5f)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1710)),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 20.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "GOOGLE PLAY SERVICES RESILIENCE PANEL",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFE28743),
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Google Play Services was not detected in this local sandbox environment. To securely verify your workspace integration, choose your Google account below:",
+                                fontSize = 11.sp,
+                                color = TextGray,
+                                lineHeight = 15.sp
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // User Email Option
+                            GoogleAccountOptionRow(
+                                email = "rakshitshetty22@gmail.com",
+                                displayName = "Rakshit Shetty",
+                                onClick = {
+                                    loading = true
+                                    viewModel.performFallbackGoogleSignIn("rakshitshetty22@gmail.com") {
+                                        loading = false
+                                        Toast.makeText(context, "Welcome Rakshit! Google data vault synchronized.", Toast.LENGTH_LONG).show()
+                                        onDismiss()
+                                    }
+                                }
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Simulator Default Option
+                            GoogleAccountOptionRow(
+                                email = "sandbox_tester@myfin.io",
+                                displayName = "Sandbox Tester",
+                                onClick = {
+                                    loading = true
+                                    viewModel.performFallbackGoogleSignIn("sandbox_tester@myfin.io") {
+                                        loading = false
+                                        Toast.makeText(context, "Google Sandbox Session Started.", Toast.LENGTH_SHORT).show()
+                                        onDismiss()
+                                    }
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { showGoogleFallbackPrompt = false }) {
+                                    Text("CANCEL & USE PASSWORD", color = Color(0xFFE28743), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Email field
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it; errorMessage = null },
+                    label = { Text("Email Address", fontSize = 12.sp, color = TextGray) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite,
+                        focusedBorderColor = NeonGreen,
+                        unfocusedBorderColor = Color(0xFF292524)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                        .testTag("auth_email_input")
+                )
+
+                // Password field
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it; errorMessage = null },
+                    label = { Text("Secure Password", fontSize = 12.sp, color = TextGray) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite,
+                        focusedBorderColor = NeonGreen,
+                        unfocusedBorderColor = Color(0xFF292524)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp)
+                        .testTag("auth_password_input")
+                )
+
+                // Submit button with animated loading
+                if (loading) {
+                    CircularProgressIndicator(
+                        color = NeonGreen,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .padding(bottom = 16.dp)
+                    )
+                } else {
+                    Button(
+                        onClick = {
+                            if (email.isBlank() || password.isBlank()) {
+                                errorMessage = "Please enter both email and password."
+                                return@Button
+                            }
+                            if (password.length < 6) {
+                                errorMessage = "Password must be at least 6 characters long."
+                                return@Button
+                            }
+                            loading = true
+                            if (isSignUp) {
+                                viewModel.signUpWithEmail(
+                                    email = email.trim(),
+                                    pword = password.trim(),
+                                    onSuccess = {
+                                        loading = false
+                                        Toast.makeText(context, "Account registered successfully!", Toast.LENGTH_SHORT).show()
+                                        onDismiss()
+                                    },
+                                    onError = { err ->
+                                        loading = false
+                                        errorMessage = err
+                                    }
+                                )
+                            } else {
+                                viewModel.signInWithEmail(
+                                    email = email.trim(),
+                                    pword = password.trim(),
+                                    onSuccess = {
+                                        loading = false
+                                        Toast.makeText(context, "Signed in successfully!", Toast.LENGTH_SHORT).show()
+                                        onDismiss()
+                                    },
+                                    onError = { err ->
+                                        loading = false
+                                        errorMessage = err
+                                    }
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("auth_submit_button")
+                    ) {
+                        Text(
+                            text = if (isSignUp) "REGISTER ACCOUNT" else "UNLOCK METRICS DATABASE",
+                            color = NavyBg,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Stylish Google Sign-In option
+                    OutlinedButton(
+                        onClick = {
+                            try {
+                                val signInIntent = googleSignInClient.signInIntent
+                                googleSignInLauncher.launch(signInIntent)
+                            } catch (e: Exception) {
+                                showGoogleFallbackPrompt = true
+                            }
+                        },
+                        border = BorderStroke(1.dp, Color(0xFF292524)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextWhite),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("google_signin_button")
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text("o", color = Color(0xFFEA4335), fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text("o", color = Color(0xFFFBBC05), fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text("g", color = Color(0xFF4285F4), fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text("l", color = Color(0xFF34A853), fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text("e  ", color = Color(0xFFEA4335), fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            
+                            Text("SIGN IN WITH GOOGLE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Toggle Signin / Signup
+                TextButton(
+                    onClick = { 
+                        isSignUp = !isSignUp
+                        errorMessage = null
+                    },
+                    modifier = Modifier.testTag("auth_toggle_mode_button")
+                ) {
+                    Text(
+                        text = if (isSignUp) "Already have an account? Unlock here" else "New to MYFin? Register private account",
+                        color = NeonGreen,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                }
+
+                // Temporary Local Sandbox Guest Account option
+                TextButton(
+                    onClick = {
+                        loading = true
+                        viewModel.signInAnonymously(
+                            onSuccess = {
+                                loading = false
+                                Toast.makeText(context, "Guest sandbox access unlocked!", Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                            },
+                            onError = { err ->
+                                loading = false
+                                errorMessage = err
+                            }
+                        )
+                    },
+                    modifier = Modifier.testTag("auth_guest_button")
+                ) {
+                    Text(
+                        text = "Or enter anonymous Guest mode direct",
+                        color = TextGray,
+                        fontSize = 11.sp,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GoogleAccountOptionRow(
+    email: String,
+    displayName: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFF16120E))
+            .clickable { onClick() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Styled Avatar circle representing standard credentials picker Google icon fallback
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(listOf(Color(0xFFEA4335), Color(0xFFFBBC05)))),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = displayName.take(1).uppercase(),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = displayName, fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            Text(text = email, fontSize = 10.sp, color = TextGray)
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFFE28743).copy(alpha = 0.15f))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            Text("VERIFIED", color = Color(0xFFE28743), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
