@@ -49,7 +49,14 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
     private val _currentUserId = MutableStateFlow("guest")
     val currentUserId: StateFlow<String> = _currentUserId.asStateFlow()
 
+    private val _selectedTheme = MutableStateFlow("default")
+    val selectedTheme: StateFlow<String> = _selectedTheme.asStateFlow()
+
     init {
+        // Load persisted theme preference
+        val themePrefs = application.getSharedPreferences("myfin_theme_prefs", android.content.Context.MODE_PRIVATE)
+        _selectedTheme.value = themePrefs.getString("saved_theme", "default") ?: "default"
+
         val database = AppDatabase.getDatabase(application)
         repository = Repository(database.dao())
 
@@ -183,6 +190,30 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
     )
 
     val creditCards = combine(repository.allCreditCards, _currentUserId) { list, uid ->
+        list.filter { it.userId == uid }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val tripEvents = combine(repository.allTripEvents, _currentUserId) { list, uid ->
+        list.filter { it.userId == uid }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val tripExpenses = combine(repository.allTripExpenses, _currentUserId) { list, uid ->
+        list.filter { it.userId == uid }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val participants = combine(repository.allParticipants, _currentUserId) { list, uid ->
         list.filter { it.userId == uid }
     }.stateIn(
         scope = viewModelScope,
@@ -414,10 +445,19 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun addManualDebt(amount: Double, desc: String, person: String, isGrp: Boolean, group: String) {
+    fun addManualDebt(amount: Double, desc: String, person: String, isGrp: Boolean, group: String, paidPeople: String = "") {
         viewModelScope.launch {
+            val initialPaid = if (person.split(",").map { it.trim() }.any { it.equals("You", ignoreCase = true) }) {
+                val list = paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+                if (!list.contains("You")) {
+                    list.add("You")
+                }
+                list.distinct().joinToString(",")
+            } else {
+                paidPeople
+            }
             repository.insertDebtSplit(
-                DebtSplitEntity(amount = amount, currency = "INR", description = desc, category = "Peer Split", paymentMode = "UPI", debtPersonInvolved = person, isGroupSplit = isGrp, groupName = group, userId = currentUserId.value)
+                DebtSplitEntity(amount = amount, currency = "INR", description = desc, category = "Peer Split", paymentMode = "UPI", debtPersonInvolved = person, isGroupSplit = isGrp, groupName = group, paidPeople = initialPaid, userId = currentUserId.value)
             )
         }
     }
@@ -476,6 +516,105 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun deleteEmi(id: Int) = viewModelScope.launch { repository.deleteEmiLoan(id) }
     fun deleteDebt(id: Int) = viewModelScope.launch { repository.deleteDebtSplit(id) }
+
+    // Trip Events
+    fun createTrip(name: String, desc: String, start: String, end: String, isPublic: Boolean, participantsList: List<String>) {
+        viewModelScope.launch {
+            repository.insertTripEvent(
+                TripEventEntity(
+                    name = name,
+                    description = desc,
+                    startDate = start,
+                    endDate = end,
+                    isPublic = isPublic,
+                    participants = participantsList.distinct().joinToString(","),
+                    userId = currentUserId.value
+                )
+            )
+        }
+    }
+
+    fun deleteTrip(id: Int) {
+        viewModelScope.launch {
+            repository.deleteTripEvent(id)
+        }
+    }
+
+    // Trip Expenses
+    fun addTripExpense(
+        tripId: Int, 
+        title: String, 
+        totalAmount: Double, 
+        paidBy: String, 
+        splitMethod: String, 
+        participantWeights: String, 
+        involvedParticipants: List<String>, 
+        category: String, 
+        notes: String = "", 
+        receiptUri: String = ""
+    ) {
+        viewModelScope.launch {
+            repository.insertTripExpense(
+                TripExpenseEntity(
+                    tripId = tripId,
+                    title = title,
+                    totalAmount = totalAmount,
+                    paidBy = paidBy,
+                    splitMethod = splitMethod,
+                    participantWeights = participantWeights,
+                    involvedParticipants = involvedParticipants.distinct().joinToString(","),
+                    category = category,
+                    notes = notes,
+                    receiptUri = receiptUri,
+                    userId = currentUserId.value
+                )
+            )
+        }
+    }
+
+    fun deleteTripExpense(id: Int) {
+        viewModelScope.launch {
+            repository.deleteTripExpense(id)
+        }
+    }
+
+    // Theme Management
+    fun selectTheme(themeName: String) {
+        _selectedTheme.value = themeName
+        viewModelScope.launch {
+            val prefs = getApplication<Application>().getSharedPreferences("myfin_theme_prefs", android.content.Context.MODE_PRIVATE)
+            prefs.edit().putString("saved_theme", themeName).apply()
+        }
+    }
+
+    // Participants Management
+    fun addParticipantToDb(name: String, email: String, isRegistered: Boolean) {
+        viewModelScope.launch {
+            val existing = participants.value.any { it.name.equals(name.trim(), ignoreCase = true) }
+            if (!existing) {
+                repository.insertParticipant(
+                    ParticipantEntity(
+                        name = name.trim(),
+                        email = email.trim(),
+                        isRegistered = isRegistered,
+                        userId = currentUserId.value
+                    )
+                )
+            }
+        }
+    }
+
+    fun removeParticipantByName(name: String) {
+        viewModelScope.launch {
+            repository.deleteParticipantByName(name.trim())
+        }
+    }
+
+    fun removeParticipant(id: Int) {
+        viewModelScope.launch {
+            repository.deleteParticipant(id)
+        }
+    }
 
     fun toggleDebtPersonPaidStatus(debtId: Int, personName: String) {
         viewModelScope.launch {
@@ -648,6 +787,9 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         repository.clearSipRecords()
         repository.clearInvestmentRecords()
         repository.clearCreditCards()
+        repository.clearTripEvents()
+        repository.clearTripExpenses()
+        repository.clearParticipants()
     }
 
     // ----------------------------------------------------

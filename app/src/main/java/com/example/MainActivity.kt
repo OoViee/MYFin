@@ -53,7 +53,10 @@ data class CssThemeVariables(
     val danger: Color = Color(0xFFEF4444),       // --danger: #ef4444 (Crimson warning color)
     val textGray: Color = Color(0xFFA8A29E),     // --text-gray: #a8a29e (Info secondary text Stone 400)
     val textWhite: Color = Color(0xFFF5F5F4),    // --text-white: #f5f5f4 (Title primary text Stone 100)
-    val border: Color = Color(0xFF292524)        // --border: #292524 (Subtle border)
+    val border: Color = Color(0xFF292524),       // --border: #292524 (Subtle border)
+    val credit: Color = Color(0xFF8B5CF6),       // --credit: credit swipe cards theme accent
+    val sip: Color = Color(0xFF3B82F6),          // --sip: sip wealth accent
+    val isLight: Boolean = false
 ) {
     fun get(name: String): Color {
         return when (name) {
@@ -66,6 +69,8 @@ data class CssThemeVariables(
             "--text-gray" -> textGray
             "--text-white" -> textWhite
             "--border" -> border
+            "--credit" -> credit
+            "--sip" -> sip
             else -> Color.Unspecified
         }
     }
@@ -86,13 +91,78 @@ val AccentOrange: Color @Composable get() = cssVar("--accent")
 val DangerRed: Color @Composable get() = cssVar("--danger")
 val TextGray: Color @Composable get() = cssVar("--text-gray")
 val TextWhite: Color @Composable get() = cssVar("--text-white")
+val BorderColor: Color @Composable get() = cssVar("--border")
+val CreditPurple: Color @Composable get() = cssVar("--credit")
+val SipBlue: Color @Composable get() = cssVar("--sip")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            WealthPulseTheme {
+            val viewModel: WealthPulseViewModel = viewModel()
+            val selectedThemeName by viewModel.selectedTheme.collectAsState()
+            
+            val themeVariables = remember(selectedThemeName) {
+                when (selectedThemeName) {
+                    "oceanic_abyss" -> CssThemeVariables(
+                        bg = Color(0xFF020617),          // Dark Navy Slate 950
+                        surface = Color(0xFF0F172A),     // Slate 900
+                        primary = Color(0xFF8B5CF6),     // Violet Accent
+                        secondary = Color(0xFF475569),   // Slate 600
+                        accent = Color(0xFFEC4899),      // Pink Glow
+                        danger = Color(0xFFF43F5E),      // Rose Indicator
+                        textGray = Color(0xFF94A3B8),    // Muted Slate 400
+                        textWhite = Color(0xFFF8FAFC),   // Bright Slate 50
+                        border = Color(0xFF1E293B),      // Border Slate 800
+                        credit = Color(0xFFC084FC),      // Lavender Violet
+                        sip = Color(0xFF38BDF8)          // Calm Sky Blue
+                    )
+                    "forest_sage" -> CssThemeVariables(
+                        bg = Color(0xFF052E16),          // Dark Forest Space Green
+                        surface = Color(0xFF114224),     // Herb/Sage Green
+                        primary = Color(0xFF22C55E),     // Vibrant Lime Green
+                        secondary = Color(0xFF15803D),   // Muted Green 700
+                        accent = Color(0xFFEAB308),      // Gold Yellow Accent
+                        danger = Color(0xFFEF4444),      // Sharp Red
+                        textGray = Color(0xFF86EFAC),    // Green Spruce 300
+                        textWhite = Color(0xFFF0FDF4),   // Pale Green Mint 50
+                        border = Color(0xFF166534),      // Dark Green Spruce Border
+                        credit = Color(0xFFA3E635),      // Fresh Lime
+                        sip = Color(0xFF60A5FA)          // Light blue sky
+                    )
+                    "sunset_glow" -> CssThemeVariables(
+                        bg = Color(0xFF1C0A10),          // Twilight Auburn Space
+                        surface = Color(0xFF2D101C),     // Dark Burgundy Orchid
+                        primary = Color(0xFFF43F5E),     // Crimson Rose Red
+                        secondary = Color(0xFF9D174D),   // Velvet Pink/Rose Border
+                        accent = Color(0xFFF97316),      // Vivid Sunset Orange
+                        danger = Color(0xFFEF4444),      // Neon Amber Warning
+                        textGray = Color(0xFFFDA4AF),    // Warm Rose Dust 300
+                        textWhite = Color(0xFFFFF1F2),   // Cream White Rose 50
+                        border = Color(0xFF4C0519),      // Deep Rose Charcoal Border
+                        credit = Color(0xFFF472B6),      // Warm Rose
+                        sip = Color(0xFFFB923C)          // Soft Orange
+                    )
+                    "bright_aurora" -> CssThemeVariables(
+                        bg = Color(0xFFF0F9FF),          // Soft Alice Blue Light Sky background
+                        surface = Color(0xFFFFFFFF),     // Bright Pure White Surface
+                        primary = Color(0xFF0284C7),     // Dynamic Sky Blue primary Accent
+                        secondary = Color(0xFF0369A1),   // Ocean Deep Blue secondary
+                        accent = Color(0xFFEA580C),      // Sunset Orange Accent
+                        danger = Color(0xFFE11D48),      // Crimson Rose Red danger
+                        textGray = Color(0xFF475569),    // Slate secondary text 500
+                        textWhite = Color(0xFF0F172A),   // Slate primary text 900
+                        border = Color(0xFFCBD5E1),      // Soft border slate-blue 300
+                        credit = Color(0xFF7C3AED),      // Indigo Purple
+                        sip = Color(0xFF2563EB),         // Strong Blue
+                        isLight = true
+                    )
+                    else -> CssThemeVariables()         // Default "Sophisticated Dark" (Stone + Emerald)
+                }
+            }
+
+            WealthPulseTheme(variables = themeVariables) {
                 Scaffold(
                     modifier = Modifier
                         .fillMaxSize()
@@ -102,7 +172,8 @@ class MainActivity : ComponentActivity() {
                     FinancialWorkspaceScreen(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding)
+                            .padding(innerPadding),
+                        viewModel = viewModel
                     )
                 }
             }
@@ -116,8 +187,8 @@ fun WealthPulseTheme(
     content: @Composable () -> Unit
 ) {
     CompositionLocalProvider(LocalCssThemeVariables provides variables) {
-        MaterialTheme(
-            colorScheme = darkColorScheme(
+        val scheme = if (variables.isLight) {
+            lightColorScheme(
                 background = cssVar("--bg"),
                 surface = cssVar("--surface"),
                 primary = cssVar("--primary"),
@@ -125,7 +196,20 @@ fun WealthPulseTheme(
                 tertiary = cssVar("--accent"),
                 onBackground = cssVar("--text-white"),
                 onSurface = cssVar("--text-white")
-            ),
+            )
+        } else {
+            darkColorScheme(
+                background = cssVar("--bg"),
+                surface = cssVar("--surface"),
+                primary = cssVar("--primary"),
+                secondary = cssVar("--secondary"),
+                tertiary = cssVar("--accent"),
+                onBackground = cssVar("--text-white"),
+                onSurface = cssVar("--text-white")
+            )
+        }
+        MaterialTheme(
+            colorScheme = scheme,
             content = content
         )
     }
@@ -147,6 +231,9 @@ fun FinancialWorkspaceScreen(
     val creditCards by viewModel.creditCards.collectAsState()
     val aiState by viewModel.aiState.collectAsState()
     val currentUser by viewModel.currentUser.collectAsState()
+    val tripEvents by viewModel.tripEvents.collectAsState()
+    val tripExpenses by viewModel.tripExpenses.collectAsState()
+    val dbParticipants by viewModel.participants.collectAsState()
 
     var activeTab by remember { mutableStateOf(0) }
     var activeNavigationMenuTab by remember { mutableStateOf("home") }
@@ -183,7 +270,21 @@ fun FinancialWorkspaceScreen(
     val totalExpense = dailyExpenses.sumOf { it.amount }
     val totalCredit = creditExpenses.sumOf { it.amount }
     val totalEmi = emiLoans.sumOf { it.amount }
-    val totalDebt = debtSplits.sumOf { it.amount }
+    val totalLentSum = debtSplits.filter { !it.description.contains("borrow", ignoreCase = true) && !it.description.contains("owe", ignoreCase = true) }.sumOf { debt ->
+        val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val unpaidCount = participants.filter { !paidList.contains(it) }.size
+        val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
+        individualShare * unpaidCount
+    }
+    val totalBorrowSum = debtSplits.filter { it.description.contains("borrow", ignoreCase = true) || it.description.contains("owe", ignoreCase = true) }.sumOf { debt ->
+        val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val unpaidCount = participants.filter { !paidList.contains(it) }.size
+        val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
+        individualShare * unpaidCount
+    }
+    val totalDebt = totalLentSum - totalBorrowSum
     val totalIncome = incomePaydays.sumOf { it.amount }
     val totalSip = sipRecords.sumOf { it.amount }
     val totalInvestmentInvested = investmentRecords.sumOf { it.amount }
@@ -261,11 +362,11 @@ fun FinancialWorkspaceScreen(
                         fontFamily = FontFamily.SansSerif
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
+                     Text(
                         text = greetingText,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Normal,
-                        color = Color(0xFFE7E5E4), // Stone 200 elegant serif
+                        color = TextWhite, // Elegant serif adapting to theme
                         fontFamily = FontFamily.Serif,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
@@ -280,8 +381,8 @@ fun FinancialWorkspaceScreen(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF1C1917))
-                            .border(1.dp, Color(0xFF292524), CircleShape),
+                            .background(SurfaceBlue)
+                            .border(1.dp, BorderColor, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
@@ -289,7 +390,7 @@ fun FinancialWorkspaceScreen(
                                 .fillMaxSize()
                                 .background(
                                     Brush.linearGradient(
-                                        listOf(Color(0xFF10B981).copy(alpha = 0.2f), Color(0xFF1C1917))
+                                        listOf(Color(0xFF10B981).copy(alpha = 0.2f), SurfaceBlue)
                                     )
                                 )
                         )
@@ -306,8 +407,8 @@ fun FinancialWorkspaceScreen(
             // FINANCIAL METRICS ORCHESTRATOR DASHBOARD (Sophisticated Dark Runway Card)
             Card(
                 shape = RoundedCornerShape(28.dp),
-                border = BorderStroke(1.dp, Color(0xFF292524)), // subtle stone-800 border
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)), // stone card base
+                border = BorderStroke(1.dp, BorderColor), // Dynamic border
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue), // Dynamic surface info card
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
@@ -316,7 +417,7 @@ fun FinancialWorkspaceScreen(
                     Text(
                         text = "DAILY RUN RATE",
                         fontSize = 11.sp,
-                        color = Color(0xFF78716C), // Stone 500
+                        color = TextGray, // Dynamic text gray
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp
                     )
@@ -447,8 +548,8 @@ fun FinancialWorkspaceScreen(
 
             Card(
                 shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, Color(0xFF292524)),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                border = BorderStroke(1.dp, BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
@@ -542,8 +643,8 @@ fun FinancialWorkspaceScreen(
 
             Card(
                 shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)), // subtle border border-white/5
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                border = BorderStroke(1.dp, BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
@@ -564,7 +665,7 @@ fun FinancialWorkspaceScreen(
                             textStyle = LocalTextStyle.current.copy(color = TextWhite, fontSize = 14.sp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = NeonGreen,
-                                unfocusedBorderColor = Color(0xFF292524),
+                                unfocusedBorderColor = BorderColor,
                                 focusedLabelColor = NeonGreen
                             ),
                             maxLines = 3
@@ -578,8 +679,8 @@ fun FinancialWorkspaceScreen(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF292524))
-                                .border(1.dp, Color.White.copy(alpha = 0.05f), CircleShape)
+                                .background(BorderColor)
+                                .border(1.dp, BorderColor.copy(alpha = 0.5f), CircleShape)
                                 .testTag("mic_picker_button")
                         ) {
                             Icon(
@@ -840,7 +941,7 @@ fun FinancialWorkspaceScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SurfaceBlue),
-                    border = BorderStroke(1.dp, Color(0xFF1D2636)),
+                    border = BorderStroke(1.dp, BorderColor),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                 ) {
@@ -856,7 +957,7 @@ fun FinancialWorkspaceScreen(
                 containerColor = Color.Transparent,
                 contentColor = NeonGreen,
                 edgePadding = 0.dp,
-                divider = { HorizontalDivider(color = Color(0xFF1D2636), thickness = 1.dp) },
+                divider = { HorizontalDivider(color = BorderColor, thickness = 1.dp) },
                 modifier = Modifier.padding(bottom = 12.dp)
             ) {
                 Tab(
@@ -1079,6 +1180,9 @@ fun FinancialWorkspaceScreen(
                             totalDebt = totalDebt,
                             currencyFormatter = currencyFormatter,
                             viewModel = viewModel,
+                            tripEvents = tripEvents,
+                            tripExpenses = tripExpenses,
+                            allParticipants = dbParticipants,
                             onTriggerManual = { type -> activeManualDialog = type }
                         )
                     } else if (activeNavigationMenuTab == "settings") {
@@ -1099,20 +1203,15 @@ fun FinancialWorkspaceScreen(
                             .background(
                                 Brush.verticalGradient(
                                     colors = listOf(
-                                        Color(0xCC0C0A09), // Highly translucent stone dark
-                                        Color(0xE60F0C0A)
+                                        NavyBg.copy(alpha = 0.85f),
+                                        NavyBg.copy(alpha = 0.95f)
                                     )
                                 )
                             )
                             .border(
                                 BorderStroke(
                                     width = 1.2.dp,
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color(0x40FFFFFF), // Ultra-fine frosted border edges
-                                            Color(0x06FFFFFF)
-                                        )
-                                    )
+                                    color = BorderColor.copy(alpha = 0.5f)
                                 ),
                                 shape = RoundedCornerShape(32.dp)
                             )
@@ -1282,7 +1381,7 @@ fun FinancialWorkspaceScreen(
             var fieldCardName by remember { mutableStateOf("HDFC Millennia") }
             var fieldTenure by remember { mutableStateOf("12") }
             var fieldRemMonths by remember { mutableStateOf("8") }
-            var fieldPerson by remember { mutableStateOf("Amit") }
+            var fieldPerson by remember { mutableStateOf("") }
             var fieldGroupName by remember { mutableStateOf("Flatmates") }
             var fieldFrequency by remember { mutableStateOf("Monthly") }
             var fieldSipDay by remember { mutableStateOf("5") }
@@ -1533,7 +1632,7 @@ fun FinancialWorkspaceScreen(
                                     value = fieldPerson,
                                     onValueChange = { fieldPerson = it },
                                     label = { Text("Involved Person Name(s) (comma separated)", color = TextGray) },
-                                    placeholder = { Text("e.g. Amit, Rahul, Priya", color = TextGray.copy(alpha = 0.5f)) },
+                                    placeholder = { Text("e.g. Roommate, Colleague", color = TextGray.copy(alpha = 0.5f)) },
                                     modifier = Modifier.fillMaxWidth(),
                                     textStyle = LocalTextStyle.current.copy(color = TextWhite),
                                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
@@ -1560,7 +1659,7 @@ fun FinancialWorkspaceScreen(
                                         .padding(vertical = 4.dp),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    val presetFriends = listOf("Amit", "Neha", "Rahul", "Priya", "Karan", "Sonia", "Sam")
+                                    val presetFriends = dbParticipants.map { it.name }
                                     presetFriends.forEach { friend ->
                                         val isSelected = currentPeopleParts.any { it.equals(friend, ignoreCase = true) }
                                         Box(
@@ -1860,8 +1959,8 @@ fun TransactionItemCard(
 ) {
     Card(
         shape = RoundedCornerShape(24.dp), // round-3xl style
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)), // subtle border-white/5
+        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+        border = BorderStroke(1.dp, BorderColor),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
@@ -1982,8 +2081,8 @@ fun CategoryHubGridCard(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF1E1C1A))
-            .border(1.dp, Color(0xFF292524), RoundedCornerShape(16.dp))
+            .background(SurfaceBlue)
+            .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
             .clickable { onClick() }
             .padding(12.dp)
     ) {
@@ -2070,7 +2169,7 @@ fun CategoryWorkspacePage(
     var localPayMode by remember { mutableStateOf("UPI") }
     var localCardName by remember { mutableStateOf("HDFC Millennia") }
     var localTenure by remember { mutableStateOf("12") }
-    var localPerson by remember { mutableStateOf("Amit") }
+    var localPerson by remember { mutableStateOf("") }
     var localGroup by remember { mutableStateOf("Office Lunch") }
     var localSipDay by remember { mutableStateOf("5") }
     var localCurVal by remember { mutableStateOf("") }
@@ -2176,8 +2275,8 @@ fun CategoryWorkspacePage(
 
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -2222,8 +2321,8 @@ fun CategoryWorkspacePage(
 
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -2580,8 +2679,8 @@ fun CommitmentsWorkspacePage(
         // Aggregated Dashboard Summary
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -2806,8 +2905,8 @@ fun UserProfileWorkspacePage(
         // Profile Card
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
             Row(
@@ -2845,8 +2944,8 @@ fun UserProfileWorkspacePage(
 
         Card(
             shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -2940,8 +3039,8 @@ fun UserProfileWorkspacePage(
         // Interactive profile configuration info section
         Card(
             shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -2994,8 +3093,8 @@ fun SettingsWorkspacePage(
         // -----------------------------------------------------------------
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, if (currentUser != null) NeonGreen.copy(alpha = 0.5f) else Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, if (currentUser != null) NeonGreen.copy(alpha = 0.5f) else BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -3042,7 +3141,7 @@ fun SettingsWorkspacePage(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = Color(0xFF292524))
+                HorizontalDivider(color = BorderColor)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (currentUser != null) {
@@ -3147,9 +3246,327 @@ fun SettingsWorkspacePage(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Core Header
+        // -----------------------------------------------------------------
+        // DYNAMIC AESTHETIC THEME SWAPPER
+        // -----------------------------------------------------------------
+        Text(
+            text = "CHOOSE SYSTEM THEME",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C), // Stone 500
+            letterSpacing = 2.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        val selectedThemeName by viewModel.selectedTheme.collectAsState()
+        // themeId, label name, Pair(Background Preview, Primary/Accent Preview)
+        val themes = listOf(
+            Triple("default", "Sophisticated Dark", Pair(Color(0xFF0C0A09), Color(0xFF10B981))),
+            Triple("oceanic_abyss", "Oceanic Abyss", Pair(Color(0xFF020617), Color(0xFF8B5CF6))),
+            Triple("forest_sage", "Forest Sage", Pair(Color(0xFF052E16), Color(0xFF22C55E))),
+            Triple("sunset_glow", "Sunset Glow", Pair(Color(0xFF1C0A10), Color(0xFFF43F5E))),
+            Triple("bright_aurora", "Light Sky Blue", Pair(Color(0xFFF0F9FF), Color(0xFF0284C7)))
+        )
+
+        val chosenThemeInfo = themes.find { it.first == selectedThemeName } ?: themes.first()
+        var themeDropdownExpanded by remember { mutableStateOf(false) }
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
+        ) {
+            Box {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { themeDropdownExpanded = true }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // Swatch Indicator
+                        Row(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(chosenThemeInfo.third.first)
+                                .border(
+                                    if (chosenThemeInfo.first == "bright_aurora") BorderStroke(1.dp, Color(0xFFCBD5E1)) else BorderStroke(0.dp, Color.Transparent),
+                                    CircleShape
+                                ),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clip(CircleShape)
+                                    .background(chosenThemeInfo.third.second)
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text = chosenThemeInfo.second,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextWhite
+                            )
+                            Text(
+                                text = "Active System Theme (Click to switch)",
+                                fontSize = 11.sp,
+                                color = TextGray
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Expand theme menu dropdown",
+                        tint = TextGray
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = themeDropdownExpanded,
+                    onDismissRequest = { themeDropdownExpanded = false },
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .background(SurfaceBlue)
+                        .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
+                ) {
+                    themes.forEach { (themeId, themeLabel, colors) ->
+                        val isSelected = selectedThemeName == themeId
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    // Swatch Indicator
+                                    Row(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(colors.first)
+                                            .border(
+                                                if (themeId == "bright_aurora") BorderStroke(0.5.dp, Color(0xFFCBD5E1)) else BorderStroke(0.dp, Color.Transparent),
+                                                CircleShape
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(colors.second)
+                                        )
+                                    }
+
+                                    Text(
+                                        text = themeLabel,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) NeonGreen else TextWhite
+                                    )
+                                }
+                            },
+                            onClick = {
+                                viewModel.selectTheme(themeId)
+                                Toast.makeText(context, "Theme switched to $themeLabel!", Toast.LENGTH_SHORT).show()
+                                themeDropdownExpanded = false
+                            },
+                            modifier = Modifier.background(if (isSelected) colors.second.copy(alpha = 0.08f) else Color.Transparent)
+                        )
+                    }
+                }
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // USER & PARTICIPANTS HUB
+        // -----------------------------------------------------------------
+        Text(
+            text = "MEMBERS & PARTICIPANTS WORKSPACE",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF78716C), // Stone 500
+            letterSpacing = 2.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        val dbParticipants by viewModel.participants.collectAsState()
+        var newFriendName by remember { mutableStateOf("") }
+        var newFriendEmail by remember { mutableStateOf("") }
+
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "ADD NEW WORKSPACE MEMBER",
+                    fontSize = 11.sp,
+                    color = NeonGreen,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                OutlinedTextField(
+                    value = newFriendName,
+                    onValueChange = { newFriendName = it },
+                    label = { Text("Workspace Name (cannot be empty)", color = TextGray) },
+                    placeholder = { Text("e.g. Johnathan", color = TextGray.copy(alpha = 0.5f)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("add_workspace_member_name_input"),
+                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                OutlinedTextField(
+                    value = newFriendEmail,
+                    onValueChange = { newFriendEmail = it },
+                    label = { Text("Workspace Email address", color = TextGray) },
+                    placeholder = { Text("e.g. johnathan@myfin.io", color = TextGray.copy(alpha = 0.5f)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("add_workspace_member_email_input"),
+                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Button(
+                    onClick = {
+                        if (newFriendName.trim().isEmpty()) {
+                            Toast.makeText(context, "Please enter a valid member name", Toast.LENGTH_SHORT).show()
+                        } else {
+                            val emailVal = if (newFriendEmail.trim().isEmpty()) "${newFriendName.trim().lowercase().replace(" ", "")}@myfin.io" else newFriendEmail.trim()
+                            viewModel.addParticipantToDb(newFriendName.trim(), emailVal, false)
+                            Toast.makeText(context, "Added ${newFriendName.trim()} to your system workspace", Toast.LENGTH_SHORT).show()
+                            newFriendName = ""
+                            newFriendEmail = ""
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .testTag("add_workspace_member_submit_button")
+                ) {
+                    Text("REGISTER WORKSPACE MEMBER", fontSize = 12.sp, color = NavyBg, fontWeight = FontWeight.Bold)
+                }
+
+                if (dbParticipants.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color(0xFF292524))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "ACTIVE PARTICIPANTS IN WORKSPACE (${dbParticipants.size})",
+                        fontSize = 11.sp,
+                        color = TextGray,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    dbParticipants.forEach { participant ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFF0F0F0F))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                // Initials Avatar Box
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(NeonGreen.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = participant.name.take(1).uppercase(),
+                                        color = NeonGreen,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                                
+                                Column {
+                                    Text(
+                                        text = participant.name,
+                                        color = TextWhite,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = participant.email,
+                                        color = TextGray,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                            
+                            IconButton(
+                                onClick = {
+                                    viewModel.removeParticipant(participant.id)
+                                    Toast.makeText(context, "Deleted ${participant.name} from workspace", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.size(32.dp).testTag("delete_member_btn_${participant.name}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete workspace member",
+                                    tint = DangerRed,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No custom members added. Add travel, housemate, or office group members to compute group expense splits instantly!",
+                        fontSize = 11.sp,
+                        color = TextGray,
+                        lineHeight = 16.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                    )
+                }
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // SYSTEM PREFERENCES & CONTROLS
+        // -----------------------------------------------------------------
         Text(
             text = "SYSTEM CONFIGURATOR",
             fontSize = 11.sp,
@@ -3170,8 +3587,8 @@ fun SettingsWorkspacePage(
         // Preferences Card
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -3197,7 +3614,7 @@ fun SettingsWorkspacePage(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Button(
                             onClick = { currencyMode = "INR"; Toast.makeText(context, "Base Currency: INR (₹)", Toast.LENGTH_SHORT).show() },
-                            colors = ButtonDefaults.buttonColors(containerColor = if (currencyMode == "INR") NeonGreen else Color(0xFF292524)),
+                            colors = ButtonDefaults.buttonColors(containerColor = if (currencyMode == "INR") NeonGreen else BorderColor),
                             shape = RoundedCornerShape(6.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             modifier = Modifier.height(28.dp).testTag("currency_inr_button")
@@ -3206,7 +3623,7 @@ fun SettingsWorkspacePage(
                         }
                         Button(
                             onClick = { currencyMode = "USD"; Toast.makeText(context, "Base Currency: USD ($)", Toast.LENGTH_SHORT).show() },
-                            colors = ButtonDefaults.buttonColors(containerColor = if (currencyMode == "USD") NeonGreen else Color(0xFF292524)),
+                            colors = ButtonDefaults.buttonColors(containerColor = if (currencyMode == "USD") NeonGreen else BorderColor),
                             shape = RoundedCornerShape(6.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             modifier = Modifier.height(28.dp).testTag("currency_usd_button")
@@ -3217,7 +3634,7 @@ fun SettingsWorkspacePage(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = Color(0xFF292524))
+                HorizontalDivider(color = BorderColor)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Option 2: Overspend alerts Switch
@@ -3239,7 +3656,7 @@ fun SettingsWorkspacePage(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = Color(0xFF292524))
+                HorizontalDivider(color = BorderColor)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Option 3: Precision Toggle Switch
@@ -3267,8 +3684,8 @@ fun SettingsWorkspacePage(
         // Technical System Diagnostics
         Card(
             shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -3376,8 +3793,8 @@ fun EmiWorkspacePage(
         // Summary Metric & Quick Action Dashboard
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -3433,8 +3850,8 @@ fun EmiWorkspacePage(
         AnimatedVisibility(visible = showForm) {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color(0xFF2E2420)),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF141110)),
+                border = BorderStroke(1.dp, BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp)
@@ -3653,8 +4070,8 @@ fun EmiWorkspacePage(
                     // BEAUTIFUL EMI DEBT CARD
                     Card(
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                        border = BorderStroke(1.dp, BorderColor),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -3782,8 +4199,8 @@ fun EmiWorkspacePage(
         // INTERACTIVE LOAN CALCULATOR SUMMARY CONTAINER (COLLAPSIBLE)
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF222222)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF101010)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 90.dp)
@@ -3985,8 +4402,8 @@ fun SipWorkspacePage(
         // Summary Metric & Actions
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -4042,8 +4459,8 @@ fun SipWorkspacePage(
         AnimatedVisibility(visible = showForm) {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color(0xFF222B38)),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1218)),
+                border = BorderStroke(1.dp, BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp)
@@ -4241,8 +4658,8 @@ fun SipWorkspacePage(
 
                     Card(
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                        border = BorderStroke(1.dp, BorderColor),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -4341,8 +4758,8 @@ fun SipWorkspacePage(
         // INTERACTIVE FORECAST CALCULATOR (COLLAPSIBLE)
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF222222)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF101010)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 90.dp)
@@ -4488,10 +4905,20 @@ fun SplitsWorkspacePage(
     totalDebt: Double,
     currencyFormatter: java.text.NumberFormat,
     viewModel: WealthPulseViewModel,
+    tripEvents: List<TripEventEntity>,
+    tripExpenses: List<TripExpenseEntity>,
+    allParticipants: List<ParticipantEntity>,
     onTriggerManual: (String) -> Unit
 ) {
+    var mainTab by remember { mutableStateOf("p2p") } // "p2p" or "groups"
     var searchQuery by remember { mutableStateOf("") }
     var selectedGroupFilter by remember { mutableStateOf("All") }
+    
+    // Detailed Selected Trip Workspace
+    var selectedTripId by remember { mutableStateOf<Int?>(null) }
+    
+    // Creators
+    var showCreateTripDialog by remember { mutableStateOf(false) }
 
     val filteredDebts = debtSplits.filter {
         val matchesQuery = it.description.contains(searchQuery, ignoreCase = true) || 
@@ -4531,29 +4958,97 @@ fun SplitsWorkspacePage(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Core Header
+        // Upper Title Header
         Text(
-            text = "👥 PEER-TO-PEER BILL SPLITS",
+            text = "👥 MULTI-DIMENSIONAL SPLIT LEDGER",
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             color = Color(0xFF78716C), // Stone 500
             letterSpacing = 2.sp
         )
         Text(
-            text = "Roommate & Group Ledger",
+            text = if (mainTab == "p2p") "P2P & Roommate Balances" else "Shared Trips & Group Workspace",
             fontSize = 24.sp,
             fontFamily = FontFamily.Serif,
             color = TextWhite,
             fontWeight = FontWeight.Light,
             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 12.dp)
         )
+
+        // Theme-compliant dynamic segment selector
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else SurfaceBlue)
+                .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(12.dp))
+                .padding(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (mainTab == "p2p") {
+                            if (LocalCssThemeVariables.current.isLight) Color.White else NeonGreen.copy(alpha = 0.15f)
+                        } else Color.Transparent
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (mainTab == "p2p") {
+                            if (LocalCssThemeVariables.current.isLight) BorderColor else NeonGreen.copy(alpha = 0.25f)
+                        } else Color.Transparent,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { mainTab = "p2p" }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Peer-to-Peer 👤",
+                    color = if (mainTab == "p2p") NeonGreen else TextGray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (mainTab == "groups") {
+                            if (LocalCssThemeVariables.current.isLight) Color.White else AccentOrange.copy(alpha = 0.15f)
+                        } else Color.Transparent
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (mainTab == "groups") {
+                            if (LocalCssThemeVariables.current.isLight) BorderColor else AccentOrange.copy(alpha = 0.25f)
+                        } else Color.Transparent,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { mainTab = "groups" }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Trips & Groups 🌴",
+                    color = if (mainTab == "groups") AccentOrange else TextGray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        if (mainTab == "p2p") {
 
         // Aggregated Dashboard Summary
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -4677,8 +5172,8 @@ fun SplitsWorkspacePage(
 
                     Card(
                         shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                        border = BorderStroke(1.dp, BorderColor),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -4849,7 +5344,33 @@ fun SplitsWorkspacePage(
                 }
             }
         }
+        } else {
+            // NEW GROUP / EVENT / TRIP WORKSPACE (SPLITWISE DETAILED FEATURING)
+            GroupTripsDashboard(
+                tripEvents = tripEvents,
+                tripExpenses = tripExpenses,
+                allParticipants = allParticipants,
+                selectedTripId = selectedTripId,
+                onTripSelect = { selectedTripId = it },
+                onShowCreateTrip = { showCreateTripDialog = true },
+                currencyFormatter = currencyFormatter,
+                viewModel = viewModel
+            )
+        }
         Spacer(modifier = Modifier.height(100.dp))
+    }
+
+    // Trip Creation Dialog
+    if (showCreateTripDialog) {
+        TripCreationDialog(
+            allParticipants = allParticipants,
+            onDismiss = { showCreateTripDialog = false },
+            onCreate = { name, desc, start, end, isPublic, selectedPList ->
+                viewModel.createTrip(name, desc, start, end, isPublic, selectedPList)
+                showCreateTripDialog = false
+            },
+            viewModel = viewModel
+        )
     }
 }
 
@@ -5017,8 +5538,8 @@ fun CreditWorkspacePage(
             if (creditCards.isEmpty()) {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-                    border = BorderStroke(1.dp, Color(0xFF262626)),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                    border = BorderStroke(1.dp, BorderColor),
                     modifier = Modifier
                         .width(310.dp)
                         .padding(bottom = 12.dp)
@@ -5041,8 +5562,8 @@ fun CreditWorkspacePage(
 
                     Card(
                         shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, Color(0xFF292524)),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)),
+                        border = BorderStroke(1.dp, BorderColor),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
                         modifier = Modifier
                             .width(310.dp)
                             .padding(bottom = 12.dp)
@@ -5120,7 +5641,7 @@ fun CreditWorkspacePage(
                                         .fillMaxWidth(fraction = (usagePercent / 100.0).toFloat().coerceIn(0f, 1f))
                                         .fillMaxHeight()
                                         .clip(CircleShape)
-                                        .background(if (usagePercent > 30.0) DangerRed else Color(0xFF8B5CF6))
+                                        .background(if (usagePercent > 30.0) DangerRed else CreditPurple)
                                 )
                             }
 
@@ -5258,8 +5779,8 @@ fun CreditWorkspacePage(
             // Utilization Card
             Card(
                 shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, Color(0xFF292524)),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                border = BorderStroke(1.dp, BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp)
@@ -5285,7 +5806,7 @@ fun CreditWorkspacePage(
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("TOTAL CONSOLIDATED LIMIT", fontSize = 10.sp, color = TextGray)
-                            Text(currencyFormatter.format(totalLimit), fontSize = 18.sp, color = Color(0xFF3B82F6), fontWeight = FontWeight.Medium)
+                            Text(currencyFormatter.format(totalLimit), fontSize = 18.sp, color = SipBlue, fontWeight = FontWeight.Medium)
                         }
                     }
 
@@ -5314,7 +5835,7 @@ fun CreditWorkspacePage(
                                 .fillMaxWidth(fraction = (utilizationPercent / 100.0).toFloat().coerceIn(0f, 1f))
                                 .fillMaxHeight()
                                 .clip(CircleShape)
-                                .background(if (utilizationPercent > 30.0) DangerRed else Color(0xFF8B5CF6))
+                                .background(if (utilizationPercent > 30.0) DangerRed else CreditPurple)
                         )
                     }
                 }
@@ -5514,13 +6035,8 @@ fun CalendarWorkspacePage(
         // GLASSMORPHIC CALENDAR FRAME
         Card(
             shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(
-                1.dp,
-                Brush.verticalGradient(
-                    listOf(Color(0x33FFFFFF), Color(0x06FFFFFF))
-                )
-            ),
-            colors = CardDefaults.cardColors(containerColor = Color(0xCC161616)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -5582,8 +6098,8 @@ fun CalendarWorkspacePage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF0F0C0A))
-                            .border(BorderStroke(1.dp, Color(0xFF292524)), RoundedCornerShape(16.dp))
+                            .background(SurfaceBlue)
+                            .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(16.dp))
                             .padding(16.dp)
                     ) {
                         Text(
@@ -5596,13 +6112,13 @@ fun CalendarWorkspacePage(
                         )
 
                         // 5 Row metrics
-                        MonthMetricIndicatorRow("💰 Monthly Total Income", mIncomes, currencyFormatter, Color(0xFF10B981))
+                        MonthMetricIndicatorRow("💰 Monthly Total Income", mIncomes, currencyFormatter, NeonGreen)
                         MonthMetricIndicatorRow("🛍️ Pure Cash Expenses", mExpenses, currencyFormatter, DangerRed)
-                        MonthMetricIndicatorRow("💳 Swipes / Liquid Debts", mCredits, currencyFormatter, Color(0xFF8B5CF6))
+                        MonthMetricIndicatorRow("💳 Swipes / Liquid Debts", mCredits, currencyFormatter, CreditPurple)
                         MonthMetricIndicatorRow("🏦 Active EMI Obligations", mEmis, currencyFormatter, AccentOrange)
-                        MonthMetricIndicatorRow("📈 SIP Wealth Compounding", mSips, currencyFormatter, Color(0xFF3B82F6))
+                        MonthMetricIndicatorRow("📈 SIP Wealth Compounding", mSips, currencyFormatter, SipBlue)
 
-                        HorizontalDivider(color = Color(0xFF292524), modifier = Modifier.padding(vertical = 12.dp))
+                        HorizontalDivider(color = BorderColor, modifier = Modifier.padding(vertical = 12.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -5686,11 +6202,11 @@ fun CalendarWorkspacePage(
                                                     .clip(RoundedCornerShape(12.dp))
                                                     .background(
                                                         if (isSelected) NeonGreen.copy(alpha = 0.15f)
-                                                        else Color(0xFF1B1B1C)
+                                                        else SurfaceBlue
                                                     )
                                                     .border(
                                                         width = if (isSelected) 1.5.dp else 0.8.dp,
-                                                        color = if (isSelected) NeonGreen else Color(0xFF292524),
+                                                        color = if (isSelected) NeonGreen else BorderColor,
                                                         shape = RoundedCornerShape(12.dp)
                                                     )
                                                     .clickable { selectedDay = dayNumber }
@@ -5708,13 +6224,13 @@ fun CalendarWorkspacePage(
                                                         verticalAlignment = Alignment.CenterVertically
                                                     ) {
                                                         if (hasIncome) {
-                                                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF10B981)))
+                                                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(NeonGreen))
                                                         }
                                                         if (hasEmi) {
                                                             Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(AccentOrange))
                                                         }
                                                         if (hasSip) {
-                                                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(Color(0xFF3B82F6)))
+                                                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(SipBlue))
                                                         }
                                                     }
 
@@ -5732,7 +6248,7 @@ fun CalendarWorkspacePage(
                                                             modifier = Modifier
                                                                 .size(4.dp)
                                                                 .clip(CircleShape)
-                                                                .background(if (hasCreditExp) Color(0xFF8B5CF6) else DangerRed)
+                                                                .background(if (hasCreditExp) CreditPurple else DangerRed)
                                                         )
                                                     } else {
                                                         Spacer(modifier = Modifier.height(4.dp))
@@ -5795,7 +6311,7 @@ fun CalendarWorkspacePage(
                             title = inc.description,
                             subtitle = "Mode: ${inc.paymentMode} | Income Payday",
                             amount = "+" + currencyFormatter.format(inc.amount),
-                            colorAccent = Color(0xFF10B981),
+                            colorAccent = NeonGreen,
                             onDelete = { viewModel.deleteIncome(inc.id) }
                         )
                     }
@@ -5819,7 +6335,7 @@ fun CalendarWorkspacePage(
                             title = cred.description,
                             subtitle = "Card: ${cred.cardName} | Shopping Debts",
                             amount = "-" + currencyFormatter.format(cred.amount),
-                            colorAccent = Color(0xFF8B5CF6),
+                            colorAccent = CreditPurple,
                             onDelete = { viewModel.deleteCredit(cred.id) }
                         )
                     }
@@ -5843,7 +6359,7 @@ fun CalendarWorkspacePage(
                             title = sip.description,
                             subtitle = "Automated Recurring Investment",
                             amount = "-" + currencyFormatter.format(sip.amount),
-                            colorAccent = Color(0xFF3B82F6),
+                            colorAccent = SipBlue,
                             onDelete = { viewModel.deleteSip(sip.id) }
                         )
                     }
@@ -5901,8 +6417,8 @@ fun CalendarItemRow(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color(0xFF221F1E)),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF141211)),
+        border = BorderStroke(1.dp, BorderColor),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -6044,8 +6560,8 @@ fun AuthDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(28.dp),
-            border = BorderStroke(1.dp, Color(0xFF292524)),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F0C0A)),
+            border = BorderStroke(1.dp, BorderColor),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -6080,8 +6596,8 @@ fun AuthDialog(
                 // Error Msg
                 if (errorMessage != null) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0x33EF4444)),
-                        border = BorderStroke(1.dp, Color(0x66EF4444)),
+                        colors = CardDefaults.cardColors(containerColor = DangerRed.copy(alpha = 0.15f)),
+                        border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.4f)),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -6089,7 +6605,7 @@ fun AuthDialog(
                     ) {
                         Text(
                             text = errorMessage!!,
-                            color = Color(0xFFFCA5A5),
+                            color = if (LocalCssThemeVariables.current.isLight) DangerRed else Color(0xFFFCA5A5),
                             fontSize = 11.sp,
                             modifier = Modifier.padding(12.dp)
                         )
@@ -6099,8 +6615,8 @@ fun AuthDialog(
                 if (showGoogleFallbackPrompt) {
                     // Google Fallback Panel
                     Card(
-                        border = BorderStroke(1.dp, Color(0xFFE28743).copy(alpha = 0.5f)),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1710)),
+                        border = BorderStroke(1.dp, AccentOrange.copy(alpha = 0.5f)),
+                        colors = CardDefaults.cardColors(containerColor = AccentOrange.copy(alpha = 0.08f)),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -6111,7 +6627,7 @@ fun AuthDialog(
                                 text = "GOOGLE PLAY SERVICES RESILIENCE PANEL",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFE28743),
+                                color = AccentOrange,
                                 letterSpacing = 1.sp
                             )
                             Spacer(modifier = Modifier.height(6.dp))
@@ -6398,4 +6914,1469 @@ fun GoogleAccountOptionRow(
             Text("VERIFIED", color = Color(0xFFE28743), fontSize = 8.sp, fontWeight = FontWeight.Bold)
         }
     }
+}
+
+// ======================= COMPONENT WORKSPACE FOR TRIP / GROUPS =======================
+@Composable
+fun GroupTripsDashboard(
+    tripEvents: List<TripEventEntity>,
+    tripExpenses: List<TripExpenseEntity>,
+    allParticipants: List<ParticipantEntity>,
+    selectedTripId: Int?,
+    onTripSelect: (Int?) -> Unit,
+    onShowCreateTrip: () -> Unit,
+    currencyFormatter: java.text.NumberFormat,
+    viewModel: WealthPulseViewModel
+) {
+    if (selectedTripId == null) {
+        // TRIPS DIRECTORIES PANEL
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "🌴 ACTIVE TRIPS & SHARED COMMITMENTS",
+                    fontSize = 11.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Button(
+                    onClick = onShowCreateTrip,
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentOrange.copy(alpha = 0.15f)),
+                    border = BorderStroke(1.dp, AccentOrange),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("New Adventure", fontSize = 11.sp, color = AccentOrange, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            if (tripEvents.isEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, BorderColor),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceBlue)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("👋 Welcome to the Group & Trip Expense Planner!", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Log group vacations, house rentals, roommates sharing, or parties with equal, percentage, ratio, or exact splits. Tap '+ New Adventure' to establish a Trip Group!",
+                            color = TextGray,
+                            fontSize = 12.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Button(
+                            onClick = onShowCreateTrip,
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentOrange),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Setup First Group & Trip", fontSize = 12.sp, color = TextWhite)
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .padding(bottom = 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    tripEvents.forEach { trip ->
+                        val tripExps = tripExpenses.filter { it.tripId == trip.id }
+                        val netSpend = tripExps.sumOf { it.totalAmount }
+                        
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onTripSelect(trip.id) }
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = trip.name,
+                                                fontSize = 18.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = TextWhite
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = if (trip.isPublic) Color(0x2210B981) else Color(0x3378716C)
+                                            ) {
+                                                Text(
+                                                    text = if (trip.isPublic) "PUBLIC" else "PRIVATE",
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (trip.isPublic) NeonGreen else TextGray,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = trip.description,
+                                            fontSize = 12.sp,
+                                            color = TextGray,
+                                            modifier = Modifier.padding(vertical = 4.dp),
+                                            maxLines = 2,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "📅 ${trip.startDate} to ${trip.endDate}",
+                                            fontSize = 11.sp,
+                                            color = AccentOrange,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                    
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = currencyFormatter.format(netSpend),
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = NeonGreen
+                                        )
+                                        Text(
+                                            text = "${tripExps.size} Expenses",
+                                            fontSize = 10.sp,
+                                            color = TextGray
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(10.dp))
+                                HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                                Spacer(modifier = Modifier.height(8.dp))
+                                
+                                val members = trip.participants.split(",").filter { it.isNotBlank() }
+                                Text(
+                                    text = "👥 MEMBERS (${members.size}): " + members.joinToString(", "),
+                                    fontSize = 10.sp,
+                                    color = TextGray,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // INDIVIDUAL DETAILED TRIP WORKSPACE PANEL
+        val currTrip = tripEvents.find { it.id == selectedTripId }
+        if (currTrip == null) {
+            onTripSelect(null)
+        } else {
+            val currTripExps = tripExpenses.filter { it.tripId == selectedTripId }
+            val tripMembers = currTrip.participants.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            
+            DetailedTripWorkspaceView(
+                trip = currTrip,
+                expenses = currTripExps,
+                members = tripMembers,
+                onBack = { onTripSelect(null) },
+                currencyFormatter = currencyFormatter,
+                viewModel = viewModel
+            )
+        }
+    }
+}
+
+// ========================== TRIPS CREATION DIALOG COMPOSE ==========================
+@Composable
+fun TripCreationDialog(
+    allParticipants: List<ParticipantEntity>,
+    onDismiss: () -> Unit,
+    onCreate: (name: String, desc: String, start: String, end: String, isPublic: Boolean, List<String>) -> Unit,
+    viewModel: WealthPulseViewModel
+) {
+    var name by remember { mutableStateOf("") }
+    var desc by remember { mutableStateOf("") }
+    var startDate by remember { mutableStateOf("08-Jun-2026") }
+    var endDate by remember { mutableStateOf("15-Jun-2026") }
+    var isPublic by remember { mutableStateOf(false) }
+    
+    // Manage chosen participants state
+    val selectedParticipants = remember { mutableStateListOf<String>("You") }
+    var filterQuery by remember { mutableStateOf("") }
+    
+    // Direct Friend Addition
+    var newFriendName by remember { mutableStateOf("") }
+    var newFriendEmail by remember { mutableStateOf("") }
+    var friendAddToast by remember { mutableStateOf<String?>(null) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+            border = BorderStroke(1.dp, Color(0xFF1E2B3E)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(18.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = "💼 Setup Group & Trip",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentOrange
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Trip / Event Name", color = TextGray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = desc,
+                    onValueChange = { desc = it },
+                    label = { Text("Trip description (e.g. Goa Villa stay)", color = TextGray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = startDate,
+                        onValueChange = { startDate = it },
+                        label = { Text("Start Date", color = TextGray) },
+                        modifier = Modifier.weight(1f),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                    )
+                    OutlinedTextField(
+                        value = endDate,
+                        onValueChange = { endDate = it },
+                        label = { Text("End Date", color = TextGray) },
+                        modifier = Modifier.weight(1f),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Public vs Private Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Set Event as Public Ledger", color = TextWhite, fontSize = 13.sp)
+                    Switch(
+                        checked = isPublic,
+                        onCheckedChange = { isPublic = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = NeonGreen)
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // PARTICIPANT MULTI SELECTOR & INVITE SYSTEM
+                Text(
+                    text = "👥 SELECT MULTIPLE INVOLVED MEMBERS:",
+                    fontSize = 10.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Bold
+                )
+
+                // Internal Search/Filter inside Dialog for Friends
+                OutlinedTextField(
+                    value = filterQuery,
+                    onValueChange = { filterQuery = it },
+                    placeholder = { Text("Search friends inside DB...", color = TextGray.copy(0.4f), fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(color = TextWhite, fontSize = 12.sp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange, unfocusedBorderColor = Color(0x33FFFFFF))
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                val matchedPList = allParticipants.filter {
+                    it.name.contains(filterQuery, ignoreCase = true) || 
+                    it.email.contains(filterQuery, ignoreCase = true)
+                }
+
+                // Scrollable chips of friends inside database
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Always show YOU
+                    val isYouSelected = selectedParticipants.contains("You")
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isYouSelected) AccentOrange.copy(alpha = 0.15f) else SurfaceBlue,
+                        border = BorderStroke(1.dp, if (isYouSelected) AccentOrange else BorderColor),
+                        modifier = Modifier.clickable {
+                            if (isYouSelected) selectedParticipants.remove("You") else selectedParticipants.add("You")
+                        }
+                    ) {
+                        Text("You", color = if (isYouSelected) AccentOrange else TextWhite, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                    }
+
+                    matchedPList.forEach { user ->
+                        val isUserSelected = selectedParticipants.contains(user.name)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isUserSelected) AccentOrange.copy(alpha = 0.15f) else SurfaceBlue,
+                            border = BorderStroke(1.dp, if (isUserSelected) AccentOrange else BorderColor),
+                            modifier = Modifier.clickable {
+                                if (isUserSelected) selectedParticipants.remove(user.name) else selectedParticipants.add(user.name)
+                            }
+                        ) {
+                            Text(user.name, color = if (isUserSelected) AccentOrange else TextWhite, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Fast Direct Invite New User System
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0x11FFFFFF)),
+                    border = BorderStroke(1.dp, Color(0x1F2B334D))
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text("➕ MANUALLY REGISTER / INVITE NEW FRIEND", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = AccentOrange)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            OutlinedTextField(
+                                value = newFriendName,
+                                onValueChange = { newFriendName = it },
+                                placeholder = { Text("Name", color = TextGray, fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f),
+                                textStyle = LocalTextStyle.current.copy(color = TextWhite, fontSize = 11.sp),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                            )
+                            OutlinedTextField(
+                                value = newFriendEmail,
+                                onValueChange = { newFriendEmail = it },
+                                placeholder = { Text("Email (Optional)", color = TextGray, fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f),
+                                textStyle = LocalTextStyle.current.copy(color = TextWhite, fontSize = 11.sp),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Button(
+                            onClick = {
+                                val cleanName = newFriendName.trim()
+                                if (cleanName.isNotBlank()) {
+                                    viewModel.addParticipantToDb(cleanName, newFriendEmail.trim(), isRegistered = false)
+                                    // Automatically add to trip selections
+                                    selectedParticipants.add(cleanName)
+                                    friendAddToast = "👤 Added '$cleanName' and preselected!"
+                                    newFriendName = ""
+                                    newFriendEmail = ""
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentOrange),
+                            modifier = Modifier.align(Alignment.End),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Invite Friend", fontSize = 10.sp)
+                        }
+
+                        friendAddToast?.let {
+                            Text(it, fontSize = 9.sp, color = NeonGreen, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${selectedParticipants.size} Selected",
+                        fontSize = 11.sp,
+                        color = AccentOrange,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row {
+                        TextButton(onClick = onDismiss) {
+                            Text("Discard", color = TextGray)
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Button(
+                            onClick = {
+                                if (name.isNotBlank() && selectedParticipants.isNotEmpty()) {
+                                    onCreate(name, desc, startDate, endDate, isPublic, selectedParticipants.toList())
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentOrange)
+                        ) {
+                            Text("Launch Group", color = TextWhite)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ======================= DETAILED EVENT WORKSPACE BOARD =======================
+@Composable
+fun DetailedTripWorkspaceView(
+    trip: TripEventEntity,
+    expenses: List<TripExpenseEntity>,
+    members: List<String>,
+    onBack: () -> Unit,
+    currencyFormatter: java.text.NumberFormat,
+    viewModel: WealthPulseViewModel
+) {
+    var trackerTab by remember { mutableStateOf("expenses") } // "summary", "expenses", "settle", "activity"
+    
+    // Creators
+    var showAddExpenseDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    
+    // Notifications timeline
+    val workspaceActivityLogs = remember(expenses) {
+        val list = mutableListOf<String>()
+        // Generate automatic logs based on expense database rows
+        expenses.forEach { exp ->
+            list.add("💸 '${exp.paidBy}' recorded ₹${exp.totalAmount} for '${exp.title}' Category '${exp.category}'.")
+        }
+        if (list.isEmpty()) {
+            list.add("🌟 Group created. Welcome members: " + members.joinToString(", "))
+        }
+        list
+    }
+
+    // Reminders triggers
+    var reminderToastMessage by remember { mutableStateOf<String?>(null) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Upper breadcrumb
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        ) {
+            IconButton(onClick = onBack, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back to Trips directory", tint = Color.White)
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "Back to list",
+                fontSize = 13.sp,
+                color = TextGray,
+                modifier = Modifier.clickable { onBack() }
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = { viewModel.deleteTrip(trip.id); onBack() },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0x1AFE3C3C)),
+                border = BorderStroke(1.dp, Color(0xFFFE3C3C)),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                modifier = Modifier.height(28.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Delete Adventure", fontSize = 10.sp, color = Color(0xFFFE3C3C))
+            }
+        }
+
+        // Event core tag card
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+            border = BorderStroke(1.dp, BorderColor)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(trip.name, fontSize = 21.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                Text(trip.description, fontSize = 12.sp, color = TextGray, modifier = Modifier.padding(vertical = 2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.DateRange, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(11.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("${trip.startDate} - ${trip.endDate}", fontSize = 11.sp, color = AccentOrange, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text("👥 ${members.size} Members", fontSize = 11.sp, color = TextGray)
+                }
+            }
+        }
+
+        // Inner Sub Workspace tabs: Expenses, Settle Up, Summary Report, Activity/Reminders
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(SurfaceBlue)
+                .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(8.dp))
+                .padding(2.dp)
+        ) {
+            listOf(
+                Triple("summary", "Summary 📊", NeonGreen),
+                Triple("expenses", "Expenses 💸", AccentOrange),
+                Triple("settle", "Settle Up 🤝", SipBlue),
+                Triple("activity", "Activity ⏳", TextGray)
+            ).forEach { (id, label, accent) ->
+                val isSelected = trackerTab == id
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSelected) accent.copy(alpha = 0.15f) else Color.Transparent)
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) accent.copy(alpha = 0.25f) else Color.Transparent,
+                            shape = RoundedCornerShape(6.dp)
+                        )
+                        .clickable { trackerTab = id }
+                        .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) accent else TextGray
+                    )
+                }
+            }
+        }
+
+        // RENDER INNER VIEWS
+        when (trackerTab) {
+            "summary" -> {
+                // SUMMARY & CATEGORY BREAKDOWN REPORT VIEW
+                val totalSpend = expenses.sumOf { it.totalAmount }
+                
+                // Categorization aggregation
+                val categoryMap = expenses.groupBy { it.category }.mapValues { entry -> entry.value.sumOf { it.totalAmount } }
+                
+                // Contributions list
+                val contributorContributions = members.associateWith { 0.0 }.toMutableMap()
+                expenses.forEach { exp ->
+                    contributorContributions[exp.paidBy] = (contributorContributions[exp.paidBy] ?: 0.0) + exp.totalAmount
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("📊 FINANCIAL REPORT STATEMENT", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(currencyFormatter.format(totalSpend), fontSize = 36.sp, fontWeight = FontWeight.Bold, color = NeonGreen)
+                            Text("Total spendings recorded during this trip event", fontSize = 11.sp, color = TextGray)
+                            
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Button(
+                                onClick = { showExportDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("📄 Export Printable Trip Summary (PDF/Excel)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+
+                    // Spend Category Breakdown
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("📂 SPENDINGS BY CATEGORY", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            
+                            if (categoryMap.isEmpty()) {
+                                Text("No expenses logged to categorize.", fontSize = 12.sp, color = TextGray)
+                            } else {
+                                categoryMap.forEach { (cat, amt) ->
+                                    val pct = if (totalSpend > 0) amt / totalSpend else 0.0
+                                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(cat, fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Medium)
+                                            Text("${currencyFormatter.format(amt)} (${String.format("%.1f", pct * 100)}%)", fontSize = 12.sp, color = TextGray)
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        // Simple Progress indicator representation
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(6.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF222222))
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(pct.toFloat().coerceIn(0f, 1f))
+                                                    .height(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(AccentOrange)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Individual Ledger Contributions
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("👤 ACTUAL INDIVIDUAL CONTRIBUTIONS", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            
+                            contributorContributions.forEach { (member, paid) ->
+                                val pct = if (totalSpend > 0) paid / totalSpend else 0.0
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .clip(CircleShape)
+                                                .background(AccentOrange.copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(member.take(1).uppercase(), color = AccentOrange, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(member, fontSize = 13.sp, color = TextWhite)
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(currencyFormatter.format(paid), fontSize = 13.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                                        Text("${String.format("%.1f", pct * 100)}% contribution", fontSize = 9.sp, color = TextGray)
+                                    }
+                                }
+                                HorizontalDivider(color = Color.White.copy(0.02f))
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(100.dp))
+                }
+            }
+            "expenses" -> {
+                // LOG TRIP EXPENSES & RECORD ADVENTURE BUTTON
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("💸 Group Expenses Log", fontSize = 12.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { showAddExpenseDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentOrange),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = TextWhite, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Add Group Expense", fontSize = 11.sp, color = TextWhite)
+                    }
+                }
+
+                if (expenses.isEmpty()) {
+                    EmptyStatePlaceholder("No group trip expenses recorded. Click 'Add Group Expense'!")
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        expenses.forEach { exp ->
+                            val involvedNames = exp.involvedParticipants.split(",").filter { it.isNotBlank() }
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF161616))
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = Color(0x22F35F22)
+                                                ) {
+                                                    Text(exp.category, fontSize = 9.sp, color = AccentOrange, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                }
+                                                if (exp.receiptUri.isNotBlank()) {
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Surface(
+                                                        shape = RoundedCornerShape(4.dp),
+                                                        color = Color(0x3310B981)
+                                                    ) {
+                                                        Text("🧾 RECEIPT ATTACHED", fontSize = 7.sp, color = NeonGreen, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                                    }
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(exp.title, fontSize = 15.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                                        }
+
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(currencyFormatter.format(exp.totalAmount), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AccentOrange)
+                                            Text("Paid by: ${exp.paidBy}", fontSize = 11.sp, color = TextGray)
+                                        }
+                                    }
+
+                                    if (exp.notes.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text("📝 Note: ${exp.notes}", fontSize = 11.sp, color = TextGray, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Split Method: ${exp.splitMethod} among ${involvedNames.size} members",
+                                            fontSize = 9.sp,
+                                            color = TextGray
+                                        )
+                                        
+                                        IconButton(
+                                            onClick = { viewModel.deleteTripExpense(exp.id) },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh, // Visual delete alternative
+                                                contentDescription = "Delete Expense",
+                                                tint = Color(0xFFFE3C3C),
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            "settle" -> {
+                // COMPUTES REVOLUTIONARY AUTOMATED BACKEND BALANCING GREEDY TRANSFERS
+                val settlements = calculateSimplifiedSettlements(members, expenses)
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("🤝 REVOLUTIONARY MINIMIZED TRANSACTIONS ENGINE", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Our dynamic program matches balances and eliminates empty loops to minimize transaction volumes.", fontSize = 11.sp, color = TextGray)
+                        }
+                    }
+
+                    if (settlements.isEmpty()) {
+                        EmptyStatePlaceholder("All trip debts are perfectly balanced! Zero transactions pending. ✨")
+                    } else {
+                        settlements.forEach { tx ->
+                            Card(
+                                border = BorderStroke(1.dp, Color(0xFF3B82F6).copy(alpha = 0.25f)),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF0E131F))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(tx.debtor, color = Color(0xFFFCA5A5), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Text(" owes ", color = TextWhite, fontSize = 12.sp)
+                                            Text(tx.creditor, color = NeonGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Transfer to clear: " + currencyFormatter.format(tx.amount),
+                                            fontSize = 11.sp,
+                                            color = TextGray
+                                        )
+                                    }
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        // SIMULATED PAY REMINDERS
+                                        Button(
+                                            onClick = {
+                                                reminderToastMessage = "⏳ Reminder Sent! Dispatched alert to '${tx.debtor}' asking to settle with '${tx.creditor}'!"
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0x333B82F6)),
+                                            border = BorderStroke(1.dp, Color(0xFF3B82F6)),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(28.dp),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Text("Remind", fontSize = 9.sp, color = Color(0xFF93C5FD))
+                                        }
+
+                                        // Settle Button
+                                        Button(
+                                            onClick = {
+                                                // Log settlement as a custom negative trip expense contribution to reflect clear balances!
+                                                viewModel.addTripExpense(
+                                                    tripId = trip.id,
+                                                    title = "Settled debt: ${tx.debtor} to ${tx.creditor}",
+                                                    totalAmount = tx.amount,
+                                                    paidBy = tx.debtor,
+                                                    splitMethod = "EXACT",
+                                                    participantWeights = tx.amount.toString(),
+                                                    involvedParticipants = listOf(tx.creditor),
+                                                    category = "Settlement Clearance"
+                                                )
+                                                reminderToastMessage = "✔️ Settlement recorded! ₹${Math.round(tx.amount)} transfer verified successfully."
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(28.dp),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Text("Mark Settled", fontSize = 9.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    reminderToastMessage?.let { msg ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFF1E293B),
+                            modifier = Modifier.fillMaxWidth().padding(4.dp)
+                        ) {
+                            Text(
+                                text = msg,
+                                color = NeonGreen,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(10.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(100.dp))
+                }
+            }
+            "activity" -> {
+                // COLLABORATOR ACTIVITY TIMELINE LOGGER
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text("⏳ COGNITIVE REAL-TIME INCIDENT LOGGER", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            workspaceActivityLogs.forEachIndexed { i, log ->
+                                Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 4.dp)) {
+                                    Text("⚡", color = AccentOrange, fontSize = 11.sp, modifier = Modifier.padding(end = 6.dp))
+                                    Text(log, fontSize = 12.sp, color = TextWhite)
+                                }
+                                if (i < workspaceActivityLogs.size - 1) {
+                                    HorizontalDivider(color = Color.White.copy(0.02f), modifier = Modifier.padding(vertical = 4.dp))
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(100.dp))
+                }
+            }
+        }
+    }
+
+    // Modal Add Expense dialog
+    if (showAddExpenseDialog) {
+        TripAddExpenseDialog(
+            members = members,
+            onDismiss = { showAddExpenseDialog = false },
+            onSave = { title, amt, payer, method, weights, involved, category, notes, recUri ->
+                viewModel.addTripExpense(trip.id, title, amt, payer, method, weights, involved, category, notes, recUri)
+                showAddExpenseDialog = false
+            }
+        )
+    }
+
+    // Modal for Printable Export Trip Summary PDF/Excel Layout Mockup
+    if (showExportDialog) {
+        TripExporterMockupDialog(
+            trip = trip,
+            expenses = expenses,
+            members = members,
+            onDismiss = { showExportDialog = false },
+            currencyFormatter = currencyFormatter
+        )
+    }
+}
+
+// ========================== COMPLEX TRIP ADD EXPENSE MODAL COMPOSE ==========================
+@Composable
+fun TripAddExpenseDialog(
+    members: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (title: String, amount: Double, paidBy: String, splitMethod: String, participantWeights: String, involved: List<String>, category: String, notes: String, receiptUri: String) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var amountStr by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Food") }
+    var paidBy by remember { mutableStateOf(members.firstOrNull() ?: "You") }
+    
+    var splitMethod by remember { mutableStateOf("EQUAL") } // "EQUAL", "PERCENT", "EXACT", "SHARE"
+    var notes by remember { mutableStateOf("") }
+    var receiptSimUri by remember { mutableStateOf("") }
+
+    // Participant inclusions per expense (Defaults to everyone included)
+    val involvedMembers = remember { mutableStateListOf<String>().apply { addAll(members) } }
+    
+    // Custom split weights map index
+    val splitWeights = remember(involvedMembers.size, splitMethod) {
+        mutableStateMapOf<String, String>().apply {
+            involvedMembers.forEach { m ->
+                put(m, when(splitMethod) {
+                    "PERCENT" -> (100.0 / involvedMembers.size).toString()
+                    "SHARE" -> "1"
+                    else -> ""
+                })
+            }
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+            border = BorderStroke(1.dp, Color(0xFF1E2B3E)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(18.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = "💸 Add Trip Group Expense",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentOrange
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Expense Title (e.g. Sea Villas)", color = TextGray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = amountStr,
+                    onValueChange = { amountStr = it },
+                    label = { Text("Total Bill Amount (₹)", color = TextGray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Spender details
+                Text("👤 WHO PAID THIS BILL?", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    members.forEach { m ->
+                        val isPayer = paidBy == m
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isPayer) NeonGreen.copy(0.15f) else SurfaceBlue,
+                            border = BorderStroke(1.dp, if (isPayer) NeonGreen else BorderColor),
+                            modifier = Modifier.clickable { paidBy = m }
+                        ) {
+                            Text(m, color = if (isPayer) NeonGreen else TextWhite, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Category selector
+                Text("📂 EXPENSE CATEGORY:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf("Food", "Stay", "Transport", "Activities", "Others").forEach { cat ->
+                        val isSelected = category == cat
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) AccentOrange.copy(0.15f) else SurfaceBlue,
+                            border = BorderStroke(1.dp, if (isSelected) AccentOrange else BorderColor),
+                            modifier = Modifier.clickable { category = cat }
+                        ) {
+                            Text(cat, color = if (isSelected) AccentOrange else TextWhite, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // FLEXIBLE SPLITING MODE CHIPS
+                Text("⚡ SPLITTING DIVISION METHOD:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        "EQUAL" to "Equal Division",
+                        "PERCENT" to "Percentages",
+                        "EXACT" to "Exact Amounts",
+                        "SHARE" to "Share weights"
+                    ).forEach { (m, lbl) ->
+                        val isSelected = splitMethod == m
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) SipBlue.copy(alpha = 0.15f) else SurfaceBlue,
+                            border = BorderStroke(1.dp, if (isSelected) SipBlue else BorderColor),
+                            modifier = Modifier.clickable { splitMethod = m }
+                        ) {
+                            Text(lbl, color = if (isSelected) SipBlue else TextWhite, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // MEMBERS PER EXPENSE SELECTION (INCLUSIONS/EXCLUSIONS)
+                Text("👥 CHOOSE INVOLVED MEMBERS (EXCLUDE THOSE WHO DIDN'T TAKE PART):", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    members.forEach { m ->
+                        val isIncluded = involvedMembers.contains(m)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isIncluded) AccentOrange.copy(alpha = 0.15f) else SurfaceBlue,
+                            border = BorderStroke(1.dp, if (isIncluded) AccentOrange else BorderColor),
+                            modifier = Modifier.clickable {
+                                if (isIncluded) involvedMembers.remove(m) else involvedMembers.add(m)
+                            }
+                        ) {
+                            Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (isIncluded) Icons.Default.Check else Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    tint = if (isIncluded) AccentOrange else TextGray,
+                                    modifier = Modifier.size(10.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(m, color = if (isIncluded) AccentOrange else TextWhite, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // CUSTOM INPUT WEIGHTS FOR FLEXIBLE SPLITTING
+                if (splitMethod != "EQUAL") {
+                    Text("⚙️ ENTER RATIOS / SHARES DETAILS FOR EACH INVOLVED MEMBER:", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBBF24))
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        involvedMembers.forEach { m ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(m, fontSize = 12.sp, color = TextWhite)
+                                OutlinedTextField(
+                                    value = splitWeights[m] ?: "",
+                                    onValueChange = { splitWeights[m] = it },
+                                    placeholder = {
+                                        Text(
+                                            when(splitMethod) {
+                                                "PERCENT" -> "e.g. 50"
+                                                "EXACT" -> "e.g. 250"
+                                                else -> "e.g. 2"
+                                            },
+                                            fontSize = 11.sp, color = TextGray
+                                        )
+                                    },
+                                    modifier = Modifier.width(110.dp).height(50.dp),
+                                    textStyle = LocalTextStyle.current.copy(color = TextWhite, fontSize = 11.sp),
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Extra custom notes (Optional)", color = TextGray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AccentOrange)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Simulated Receipt Attachment Widget
+                Text("🧾 ATTACH RECEIPTS / BILL INVOICES:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextGray)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val hasAttached = receiptSimUri.isNotBlank()
+                    Button(
+                        onClick = {
+                            receiptSimUri = "receipt_${System.currentTimeMillis()}.png"
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = if (hasAttached) NeonGreen.copy(0.15f) else Color(0xFF161616)),
+                        border = BorderStroke(1.dp, if (hasAttached) NeonGreen else Color.Transparent)
+                    ) {
+                        Text(if (hasAttached) "🧾 Receipt attached ✔" else "➕ Simulate Upload Bill", fontSize = 11.sp, color = if (hasAttached) NeonGreen else TextWhite)
+                    }
+                    if (hasAttached) {
+                        TextButton(onClick = { receiptSimUri = "" }) {
+                            Text("Clear", color = Color(0xFFFE3C3C), fontSize = 11.sp)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = TextGray)
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Button(
+                        onClick = {
+                            val amt = amountStr.toDoubleOrNull() ?: 0.0
+                            if (title.isNotBlank() && amt > 0.0 && involvedMembers.isNotEmpty()) {
+                                // Compile active weights string
+                                val weightsString = if (splitMethod == "EQUAL") {
+                                    ""
+                                } else {
+                                    involvedMembers.map { m ->
+                                        splitWeights[m] ?: "0"
+                                    }.joinToString(",")
+                                }
+                                onSave(title, amt, paidBy, splitMethod, weightsString, involvedMembers.toList(), category, notes, receiptSimUri)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentOrange)
+                    ) {
+                        Text("Add", color = TextWhite)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ========================== PRINTABLE EXCEL / PDF EXPORTER MOCKUP DIALOG COMPOSE ==========================
+@Composable
+fun TripExporterMockupDialog(
+    trip: TripEventEntity,
+    expenses: List<TripExpenseEntity>,
+    members: List<String>,
+    onDismiss: () -> Unit,
+    currencyFormatter: java.text.NumberFormat
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0C0C0E)),
+            border = BorderStroke(2.dp, NeonGreen),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(18.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "📄 PRINTABLE TRIP SUMMARY REPORT",
+                    color = NeonGreen,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "FORMAT: ADOBE PDF / MICROSOFT EXCEL SHEET",
+                    color = TextGray,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(14.dp))
+                
+                // MOCK spreadsheet mockup
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                    border = BorderStroke(1.dp, Color.White.copy(0.05f))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("=======================================", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = TextGray)
+                        Text("MYFIN GROUP BILL LEDGER INVOICE        ", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                        Text("=======================================", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = TextGray)
+                        Text("EVENT NAME: ${trip.name}               ", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = TextWhite)
+                        Text("DATES:      ${trip.startDate} - ${trip.endDate}", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = TextWhite)
+                        Text("MEMBERS:    ${members.joinToString(", ")}", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = TextWhite)
+                        Text("---------------------------------------", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = TextGray)
+                        
+                        expenses.forEach { exp ->
+                            val paddedTitle = exp.title.take(13).padEnd(13, ' ')
+                            val paddedPaid = exp.paidBy.take(6).padEnd(6, ' ')
+                            val amtString = currencyFormatter.format(exp.totalAmount)
+                            Text("$paddedTitle | PAID BY: $paddedPaid | $amtString", fontFamily = FontFamily.Monospace, fontSize = 8.sp, color = TextWhite)
+                        }
+
+                        Text("---------------------------------------", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = TextGray)
+                        Text("TOTAL COST: " + currencyFormatter.format(expenses.sumOf { it.totalAmount }), fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
+                        Text("=======================================", fontFamily = FontFamily.Monospace, fontSize = 9.sp, color = TextGray)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                                Text("📥 Export Complete! Report successfully formatted.", color = TextWhite, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
+                ) {
+                    Text("Download Summary Report", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+// Simplified settlements helper
+data class SettlementTransaction(
+    val debtor: String,
+    val creditor: String,
+    val amount: Double
+)
+
+fun calculateSimplifiedSettlements(
+    participants: List<String>,
+    expenses: List<TripExpenseEntity>
+): List<SettlementTransaction> {
+    if (participants.isEmpty()) return emptyList()
+    
+    // 1. Calculate net balances
+    // Use a clean, trimmed approach to ensure consistent key matching
+    val balances = participants.map { it.trim() }.associateWith { 0.0 }.toMutableMap()
+    
+    expenses.forEach { expense ->
+        val totalAmount = expense.totalAmount
+        val paidBy = expense.paidBy.trim()
+        val involvedList = expense.involvedParticipants.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        
+        if (involvedList.isNotEmpty()) {
+            // Credit the spender (initialize to 0.0 if not already present)
+            balances[paidBy] = (balances[paidBy] ?: 0.0) + totalAmount
+            
+            // Calculate individual shares based on split method
+            val shares = when (expense.splitMethod) {
+                "PERCENT" -> {
+                    val weights = expense.participantWeights.split(",").map { it.toDoubleOrNull() ?: 100.0 / involvedList.size }
+                    val totalWeight = weights.sum()
+                    involvedList.mapIndexed { idx, p ->
+                        val weight = weights.getOrElse(idx) { 100.0 / involvedList.size }
+                        val pct = if (totalWeight > 0.0) weight / totalWeight else 1.0 / involvedList.size
+                        p to totalAmount * pct
+                    }
+                }
+                "EXACT" -> {
+                    val weights = expense.participantWeights.split(",").map { it.toDoubleOrNull() ?: totalAmount / involvedList.size }
+                    involvedList.mapIndexed { idx, p ->
+                        p to weights.getOrElse(idx) { totalAmount / involvedList.size }
+                    }
+                }
+                "SHARE" -> {
+                    val weights = expense.participantWeights.split(",").map { it.toDoubleOrNull() ?: 1.0 }
+                    val totalShares = weights.sum()
+                    involvedList.mapIndexed { idx, p ->
+                        val weight = weights.getOrElse(idx) { 1.0 }
+                        val shareFraction = if (totalShares > 0.0) weight / totalShares else 1.0 / involvedList.size
+                        p to totalAmount * shareFraction
+                    }
+                }
+                else -> { // EQUAL Division
+                    val share = totalAmount / involvedList.size
+                    involvedList.map { it to share }
+                }
+            }
+            
+            // Debit each involved participant's balance
+            shares.forEach { (p, shareAmount) ->
+                balances[p] = (balances[p] ?: 0.0) - shareAmount
+            }
+        }
+    }
+    
+    // Convert double balances to fixed-point Long (cents) to avoid floating point issues
+    val debtorList = mutableListOf<Pair<String, Long>>()
+    val creditorList = mutableListOf<Pair<String, Long>>()
+    
+    balances.forEach { (name, bal) ->
+        val cents = kotlin.math.round(bal * 100.0).toLong()
+        if (cents < 0) {
+            debtorList.add(name to -cents) // Positive value representing amount owed
+        } else if (cents > 0) {
+            creditorList.add(name to cents) // Positive value representing amount credited
+        }
+    }
+    
+    val transactions = mutableListOf<SettlementTransaction>()
+    
+    // Core Greedy Match Loop: Match largest remaining debtor with largest creditor
+    while (debtorList.isNotEmpty() && creditorList.isNotEmpty()) {
+        // Sort both descending so we're always matching the largest outstanding amounts
+        debtorList.sortByDescending { it.second }
+        creditorList.sortByDescending { it.second }
+        
+        val debtor = debtorList.first()
+        val creditor = creditorList.first()
+        
+        val payAmtCents = minOf(debtor.second, creditor.second)
+        if (payAmtCents > 0) {
+            transactions.add(
+                SettlementTransaction(
+                    debtor = debtor.first,
+                    creditor = creditor.first,
+                    amount = payAmtCents / 100.0
+                )
+            )
+        }
+        
+        // Update balance and remove settled members
+        val remainingDebtorCents = debtor.second - payAmtCents
+        val remainingCreditorCents = creditor.second - payAmtCents
+        
+        if (remainingDebtorCents > 0) {
+            debtorList[0] = debtor.first to remainingDebtorCents
+        } else {
+            debtorList.removeAt(0)
+        }
+        
+        if (remainingCreditorCents > 0) {
+            creditorList[0] = creditor.first to remainingCreditorCents
+        } else {
+            creditorList.removeAt(0)
+        }
+    }
+    
+    return transactions
 }
