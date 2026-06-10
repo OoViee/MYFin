@@ -12,7 +12,22 @@ data class DailyExpenseEntity(
     val category: String,
     val paymentMode: String,
     val userId: String = "guest",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    
+    // Stage 2 fields supporting Expense 2.0
+    val notes: String = "",
+    val receiptImageUri: String = "",
+    val tags: String = "", // Comma-separated list of tags (e.g. "#office,#trip")
+    val dateString: String = "", // formatted "YYYY-MM-DD"
+    val timeString: String = "", // formatted "HH:mm"
+    val isRecurring: Boolean = false,
+    val recurringPeriod: String = "None", // "None", "Daily", "Weekly", "Monthly", "Yearly"
+    val isDeleted: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    
+    // Stage 4 Credit Card field
+    val cardId: Int = 0
 )
 
 @Entity(tableName = "credit_expenses")
@@ -103,7 +118,16 @@ data class CreditCardEntity(
     val billDate: Int, // e.g. 15 for 15th of month
     val billStatus: String = "Pending", // "Pending" or "Paid"
     val outstandingAmount: Double = 0.0,
-    val userId: String = "guest"
+    val userId: String = "guest",
+    val bankName: String = "",
+    val cardType: String = "Standard", // Standard, Premium, Cashback, Fuel, etc.
+    val cardNetwork: String = "Visa", // Visa, Mastercard, RuPay, American Express, Diners Club, Other
+    val lastFourDigits: String = "",
+    val billingDate: Int = billDate,
+    val dueDate: Int = 5, // e.g., 5th of month
+    val isActive: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "trip_events")
@@ -142,6 +166,65 @@ data class ParticipantEntity(
     val name: String,
     val email: String = "",
     val isRegistered: Boolean = true,
+    val userId: String = "guest"
+)
+
+@Entity(tableName = "budgets")
+data class BudgetEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val category: String,
+    val budgetAmount: Double,
+    val startDate: Long,
+    val endDate: Long,
+    val periodType: String = "Monthly", // "Monthly", "Weekly", "Yearly"
+    val isActive: Boolean = true,
+    val isDeleted: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val userId: String = "guest"
+)
+
+@Entity(tableName = "card_statements")
+data class CardStatementEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val cardId: Int,
+    val statementStartDate: Long,
+    val statementEndDate: Long,
+    val statementAmount: Double,
+    val minimumDue: Double,
+    val paymentDueDate: Long,
+    val paymentStatus: String = "Unpaid", // Unpaid, Paid, Partially Paid
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val userId: String = "guest"
+)
+
+@Entity(tableName = "card_emis")
+data class CardEMIEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val cardId: Int,
+    val purchaseAmount: Double,
+    val purchaseDate: Long,
+    val tenureMonths: Int,
+    val emiAmount: Double,
+    val remainingInstallments: Int,
+    val description: String,
+    val status: String = "Active", // Active, Completed, Upcoming
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val userId: String = "guest"
+)
+
+@Entity(tableName = "card_payments")
+data class CardPaymentEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val cardId: Int,
+    val amount: Double,
+    val paymentDate: Long,
+    val sourceAccount: String,
+    val notes: String = "",
+    val statementId: Int = 0, // 0 if none
+    val createdAt: Long = System.currentTimeMillis(),
     val userId: String = "guest"
 )
 

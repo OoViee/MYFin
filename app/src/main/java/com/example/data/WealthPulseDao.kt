@@ -154,4 +154,95 @@ interface WealthPulseDao {
 
     @Query("DELETE FROM participants")
     suspend fun clearParticipants()
+
+    // --- Budget Management 3.0 ---
+    @Query("SELECT * FROM budgets WHERE userId = :userId AND isDeleted = 0 ORDER BY createdAt DESC")
+    fun getAllBudgets(userId: String): Flow<List<BudgetEntity>>
+
+    @Query("SELECT * FROM budgets WHERE id = :id LIMIT 1")
+    suspend fun getBudgetById(id: Int): BudgetEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBudget(budget: BudgetEntity)
+
+    @Query("UPDATE budgets SET isDeleted = 1, isActive = 0, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun softDeleteBudget(id: Int, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("UPDATE budgets SET isActive = :isActive, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun toggleBudgetActiveState(id: Int, isActive: Boolean, updatedAt: Long = System.currentTimeMillis())
+
+    @Query("DELETE FROM budgets")
+    suspend fun clearBudgets()
+
+    @Query("""
+        SELECT category, SUM(amount) as totalSpent 
+        FROM daily_expenses 
+        WHERE userId = :userId AND isDeleted = 0 AND timestamp >= :startDate AND timestamp <= :endDate 
+        GROUP BY category
+    """)
+    fun getCategorySpendingForPeriod(userId: String, startDate: Long, endDate: Long): Flow<List<CategorySpending>>
+
+    @Query("""
+        SELECT SUM(amount) 
+        FROM daily_expenses 
+        WHERE userId = :userId AND isDeleted = 0 AND category = :category AND timestamp >= :startDate AND timestamp <= :endDate
+    """)
+    fun getSpentAmountForCategory(userId: String, category: String, startDate: Long, endDate: Long): Flow<Double?>
+
+    // --- Credit Card Management Pro (Stage 4) ---
+    @Query("SELECT * FROM credit_cards WHERE userId = :userId ORDER BY cardName ASC")
+    fun getAllCreditCardsForUser(userId: String): Flow<List<CreditCardEntity>>
+
+    @Query("SELECT * FROM credit_cards WHERE id = :id LIMIT 1")
+    suspend fun getCreditCardById(id: Int): CreditCardEntity?
+
+    @Query("SELECT * FROM daily_expenses WHERE cardId = :cardId AND isDeleted = 0 ORDER BY timestamp DESC")
+    fun getExpensesForCard(cardId: Int): Flow<List<DailyExpenseEntity>>
+
+    @Query("SELECT * FROM card_statements WHERE cardId = :cardId ORDER BY statementEndDate DESC")
+    fun getStatementsForCard(cardId: Int): Flow<List<CardStatementEntity>>
+
+    @Query("SELECT * FROM card_statements WHERE id = :id LIMIT 1")
+    suspend fun getStatementById(id: Int): CardStatementEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCardStatement(statement: CardStatementEntity)
+
+    @Query("DELETE FROM card_statements WHERE id = :id")
+    suspend fun deleteCardStatement(id: Int)
+
+    @Query("SELECT * FROM card_emis WHERE cardId = :cardId ORDER BY createdAt DESC")
+    fun getEMIsForCard(cardId: Int): Flow<List<CardEMIEntity>>
+
+    @Query("SELECT * FROM card_emis WHERE userId = :userId ORDER BY createdAt DESC")
+    fun getAllEMIs(userId: String): Flow<List<CardEMIEntity>>
+
+    @Query("SELECT * FROM card_emis WHERE id = :id LIMIT 1")
+    suspend fun getEMIById(id: Int): CardEMIEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCardEMI(emi: CardEMIEntity)
+
+    @Query("DELETE FROM card_emis WHERE id = :id")
+    suspend fun deleteCardEMI(id: Int)
+
+    @Query("SELECT * FROM card_payments WHERE cardId = :cardId ORDER BY paymentDate DESC")
+    fun getPaymentsForCard(cardId: Int): Flow<List<CardPaymentEntity>>
+
+    @Query("SELECT * FROM card_payments WHERE userId = :userId ORDER BY paymentDate DESC")
+    fun getAllPayments(userId: String): Flow<List<CardPaymentEntity>>
+
+    @Query("SELECT * FROM card_payments WHERE id = :id LIMIT 1")
+    suspend fun getPaymentById(id: Int): CardPaymentEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCardPayment(payment: CardPaymentEntity)
+
+    @Query("DELETE FROM card_payments WHERE id = :id")
+    suspend fun deleteCardPayment(id: Int)
 }
+
+data class CategorySpending(
+    val category: String,
+    val totalSpent: Double
+)

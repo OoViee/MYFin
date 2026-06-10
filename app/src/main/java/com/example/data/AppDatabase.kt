@@ -17,9 +17,13 @@ import androidx.room.RoomDatabase
         CreditCardEntity::class,
         TripEventEntity::class,
         TripExpenseEntity::class,
-        ParticipantEntity::class
+        ParticipantEntity::class,
+        BudgetEntity::class,
+        CardStatementEntity::class,
+        CardEMIEntity::class,
+        CardPaymentEntity::class
     ],
-    version = 6,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

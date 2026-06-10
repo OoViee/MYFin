@@ -40,6 +40,7 @@ data class UserProfile(
 
 class WealthPulseViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val db = AppDatabase.getDatabase(application)
     private val repository: Repository
     private var firebaseAuth: FirebaseAuth? = null
 
@@ -107,7 +108,7 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         repository.allDebtSplits,
         _currentUserId
     ) { expList, debtList, uid ->
-        val standardExpenses = expList.filter { it.userId == uid }.toMutableList()
+        val standardExpenses = expList.filter { it.userId == uid && !it.isDeleted }.toMutableList()
         val lentExpenses = debtList.filter { it.userId == uid && !it.description.contains("borrow", ignoreCase = true) && !it.description.contains("owe", ignoreCase = true) }.map { debt ->
             val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
@@ -1012,4 +1013,220 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         _currentUserId.value = newUid
         onSuccess()
     }
+
+    // --- Expense Management 2.0 State and Actions ---
+    private val _expenseFilters = MutableStateFlow(ExpenseFilters())
+    val expenseFilters: StateFlow<ExpenseFilters> = _expenseFilters.asStateFlow()
+
+    val filteredDailyExpenses = combine(
+        dailyExpenses,
+        _expenseFilters
+    ) { expenses, sFilter ->
+        var list = expenses.filter { it.id > 0 && !it.isDeleted } // ID > 0 pulls real daily expenses (ignoring negative-ID peer splits mapped onto expenses)
+        
+        // Real-time Text Search: Title, Notes, Category, Tags, Amount
+        if (sFilter.searchQuery.isNotBlank()) {
+            val query = sFilter.searchQuery.trim().lowercase()
+            list = list.filter {
+                it.description.lowercase().contains(query) ||
+                it.notes.lowercase().contains(query) ||
+                it.category.lowercase().contains(query) ||
+                it.tags.lowercase().contains(query) ||
+                it.amount.toString().contains(query)
+            }
+        }
+        
+        // Date filters
+        if (sFilter.startDate != null) {
+            list = list.filter { it.timestamp >= sFilter.startDate }
+        }
+        if (sFilter.endDate != null) {
+            val endOfDay = sFilter.endDate + (24 * 60 * 60 * 1000 - 1)
+            list = list.filter { it.timestamp <= endOfDay }
+        }
+        
+        // Category filter
+        if (sFilter.category != "All") {
+            list = list.filter { it.category.equals(sFilter.category, ignoreCase = true) }
+        }
+        
+        // Payment Mode filter
+        if (sFilter.paymentMethod != "All") {
+            list = list.filter { it.paymentMode.equals(sFilter.paymentMethod, ignoreCase = true) }
+        }
+        
+        // Amount Range filters
+        if (sFilter.minAmount != null) {
+            list = list.filter { it.amount >= sFilter.minAmount }
+        }
+        if (sFilter.maxAmount != null) {
+            list = list.filter { it.amount <= sFilter.maxAmount }
+        }
+        
+        // Tag filter (searches for #tag inside tags string)
+        if (sFilter.selectedTag.isNotBlank()) {
+            list = list.filter { it.tags.contains(sFilter.selectedTag, ignoreCase = true) }
+        }
+        
+        // Sorting
+        list = when (sFilter.sortBy) {
+            "Oldest First" -> list.sortedBy { it.timestamp }
+            "Highest Amount" -> list.sortedByDescending { it.amount }
+            "Lowest Amount" -> list.sortedBy { it.amount }
+            else -> list.sortedByDescending { it.timestamp } // Newest First (default)
+        }
+        list
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    fun updateExpenseFilters(filters: ExpenseFilters) {
+        _expenseFilters.value = filters
+    }
+
+    fun resetExpenseFilters() {
+        _expenseFilters.value = ExpenseFilters()
+    }
+
+    fun insertFullExpense(
+        amount: Double,
+        description: String,
+        category: String,
+        paymentMode: String,
+        notes: String = "",
+        receiptImageUri: String = "",
+        tags: String = "",
+        dateString: String = "",
+        timeString: String = "",
+        isRecurring: Boolean = false,
+        recurringPeriod: String = "None",
+        timestamp: Long = System.currentTimeMillis(),
+        cardId: Int = 0
+    ) {
+        viewModelScope.launch {
+            val expense = DailyExpenseEntity(
+                amount = amount,
+                currency = "INR",
+                description = description.ifBlank { "$category Expense" },
+                category = category,
+                paymentMode = paymentMode,
+                userId = currentUserId.value,
+                timestamp = timestamp,
+                notes = notes,
+                receiptImageUri = receiptImageUri,
+                tags = tags,
+                dateString = dateString,
+                timeString = timeString,
+                isRecurring = isRecurring,
+                recurringPeriod = recurringPeriod,
+                isDeleted = false,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
+                cardId = cardId
+            )
+            repository.insertDailyExpense(expense)
+            if (paymentMode == "Credit Card" || paymentMode.contains("Credit", ignoreCase = true)) {
+                val cardName = if (cardId > 0) {
+                    db.dao().getCreditCardById(cardId)?.cardName ?: "HDFC Millennia"
+                } else {
+                    "HDFC Millennia"
+                }
+                updateCardOutstanding(cardName, amount)
+            }
+        }
+    }
+
+    fun updateFullExpense(
+        id: Int,
+        amount: Double,
+        description: String,
+        category: String,
+        paymentMode: String,
+        notes: String,
+        receiptImageUri: String,
+        tags: String,
+        dateString: String,
+        timeString: String,
+        isRecurring: Boolean,
+        recurringPeriod: String,
+        timestamp: Long,
+        cardId: Int = 0
+    ) {
+        viewModelScope.launch {
+            val existing = dailyExpenses.value.find { it.id == id }
+            val diffAmount = if (existing != null) amount - existing.amount else 0.0
+            
+            val expense = DailyExpenseEntity(
+                id = id,
+                amount = amount,
+                currency = "INR",
+                description = description.ifBlank { "$category Expense" },
+                category = category,
+                paymentMode = paymentMode,
+                userId = currentUserId.value,
+                timestamp = timestamp,
+                notes = notes,
+                receiptImageUri = receiptImageUri,
+                tags = tags,
+                dateString = dateString,
+                timeString = timeString,
+                isRecurring = isRecurring,
+                recurringPeriod = recurringPeriod,
+                isDeleted = false,
+                createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
+                cardId = cardId
+            )
+            repository.insertDailyExpense(expense)
+            
+            if (paymentMode == "Credit Card" || paymentMode.contains("Credit", ignoreCase = true)) {
+                if (diffAmount != 0.0) {
+                    val cardName = if (cardId > 0) {
+                        db.dao().getCreditCardById(cardId)?.cardName ?: "HDFC Millennia"
+                    } else if (existing != null && existing.cardId > 0) {
+                        db.dao().getCreditCardById(existing.cardId)?.cardName ?: "HDFC Millennia"
+                    } else {
+                        "HDFC Millennia"
+                    }
+                    updateCardOutstanding(cardName, diffAmount)
+                }
+            }
+        }
+    }
+
+    fun softDeleteExpense(id: Int) {
+        viewModelScope.launch {
+            val existing = dailyExpenses.value.find { it.id == id }
+            if (existing != null) {
+                val deletedExpense = existing.copy(
+                    isDeleted = true,
+                    updatedAt = System.currentTimeMillis()
+                )
+                repository.insertDailyExpense(deletedExpense)
+                
+                if (existing.paymentMode == "Credit Card" || existing.paymentMode.contains("Credit", ignoreCase = true)) {
+                    val cardName = if (existing.cardId > 0) {
+                        db.dao().getCreditCardById(existing.cardId)?.cardName ?: "HDFC Millennia"
+                    } else {
+                        "HDFC Millennia"
+                    }
+                    decreaseCardOutstanding(cardName, existing.amount)
+                }
+            }
+        }
+    }
 }
+
+data class ExpenseFilters(
+    val searchQuery: String = "",
+    val startDate: Long? = null,
+    val endDate: Long? = null,
+    val category: String = "All",
+    val paymentMethod: String = "All",
+    val minAmount: Double? = null,
+    val maxAmount: Double? = null,
+    val selectedTag: String = "",
+    val sortBy: String = "Newest First" // "Newest First", "Oldest First", "Highest Amount", "Lowest Amount"
+)

@@ -338,6 +338,12 @@ fun FinancialWorkspaceScreen(
                         .padding(bottom = innerScaffoldPadding.calculateBottomPadding())
                 ) {
                     if (activeNavigationMenuTab == "home") {
+                        DashboardScreen(
+                            onNavigateToTab = { tab -> activeNavigationMenuTab = tab },
+                            onTriggerQuickAction = { type -> activeManualDialog = type },
+                            currencyFormatter = currencyFormatter
+                        )
+                        if (false) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -986,13 +992,13 @@ fun FinancialWorkspaceScreen(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 if (isSelected) {
-                                    if (isLight) Color.White else accentColor.copy(alpha = 0.15f)
+                                    accentColor.copy(alpha = if (isLight) 0.18f else 0.15f)
                                 } else Color.Transparent
                             )
                             .border(
                                 width = 1.dp,
                                 color = if (isSelected) {
-                                    if (isLight) BorderColor else accentColor.copy(alpha = 0.25f)
+                                    accentColor.copy(alpha = if (isLight) 0.35f else 0.25f)
                                 } else Color.Transparent,
                                 shape = RoundedCornerShape(8.dp)
                             ),
@@ -1150,6 +1156,25 @@ fun FinancialWorkspaceScreen(
             }
                             Spacer(modifier = Modifier.height(100.dp))
                         } // CLOSES home page column
+                        } // CLOSES if (false) wrapping old home screen
+                    } else if (activeNavigationMenuTab == "expenses") {
+                        com.example.ui.ExpensesWorkspaceHub(
+                            dailyExpenses = dailyExpenses,
+                            currencyFormatter = currencyFormatter,
+                            viewModel = viewModel
+                        )
+                    } else if (activeNavigationMenuTab == "reports") {
+                        ReportsWorkspacePage(
+                            dailyExpenses = dailyExpenses,
+                            creditExpenses = creditExpenses,
+                            incomePaydays = incomePaydays,
+                            currencyFormatter = currencyFormatter
+                        )
+                    } else if (activeNavigationMenuTab == "more") {
+                        MoreWorkspaceHub(
+                            onNavigate = { tab -> activeNavigationMenuTab = tab },
+                            onNavigateToCategory = { cat -> currentCategoryPage = cat }
+                        )
                     } else if (activeNavigationMenuTab == "calendar") {
                         CalendarWorkspacePage(
                             dailyExpenses = dailyExpenses,
@@ -1177,13 +1202,8 @@ fun FinancialWorkspaceScreen(
                             onTriggerManual = { type -> activeManualDialog = type }
                         )
                     } else if (activeNavigationMenuTab == "credit") {
-                        CreditWorkspacePage(
-                            creditExpenses = creditExpenses,
-                            creditCards = creditCards,
-                            totalCredit = totalCredit,
-                            currencyFormatter = currencyFormatter,
-                            viewModel = viewModel,
-                            onTriggerManual = { type -> activeManualDialog = type }
+                        com.example.ui.CreditCardWorkspaceHub(
+                            currencyFormatter = currencyFormatter
                         )
                     } else if (activeNavigationMenuTab == "lent") {
                         SplitsWorkspacePage(
@@ -1199,6 +1219,10 @@ fun FinancialWorkspaceScreen(
                     } else if (activeNavigationMenuTab == "settings") {
                         SettingsWorkspacePage(
                             viewModel = viewModel
+                        )
+                    } else if (activeNavigationMenuTab == "budgets") {
+                        com.example.ui.BudgetWorkspaceHub(
+                            currencyFormatter = currencyFormatter
                         )
                     }
 
@@ -1235,12 +1259,10 @@ fun FinancialWorkspaceScreen(
                         ) {
                             val items = listOf(
                                 Triple("home", Icons.Default.Home, "Home"),
-                                Triple("calendar", Icons.Default.DateRange, "Calendar"),
-                                Triple("emi", Icons.Default.AccountBox, "EMI"),
-                                Triple("sip", Icons.Default.PlayArrow, "SIP"),
-                                Triple("credit", Icons.Default.Send, "Credit"),
-                                Triple("lent", Icons.Default.Share, "Splits"),
-                                Triple("settings", Icons.Default.Settings, "Settings")
+                                Triple("expenses", Icons.Default.DateRange, "Expenses"),
+                                Triple("lent", Icons.Default.Share, "Split"),
+                                Triple("reports", Icons.Default.Star, "Reports"),
+                                Triple("more", Icons.Default.Menu, "More")
                             )
 
                             items.forEach { (route, icon, label) ->
@@ -1402,7 +1424,7 @@ fun FinancialWorkspaceScreen(
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-                    border = BorderStroke(1.dp, Color(0xFF1E2B3E)),
+                    border = BorderStroke(1.dp, BorderColor),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(12.dp)
@@ -3510,7 +3532,7 @@ fun SettingsWorkspacePage(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF0F0F0F))
+                                .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF0F0F0F))
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -4181,7 +4203,7 @@ fun EmiWorkspacePage(
                                     .height(6.dp)
                                     .clip(RoundedCornerShape(3.dp)),
                                 color = AccentOrange,
-                                trackColor = Color(0xFF262626)
+                                trackColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626)
                             )
 
                             // Alert Banner
@@ -4190,7 +4212,7 @@ fun EmiWorkspacePage(
                                     .padding(top = 10.dp)
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF1F120D))
+                                    .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFFFEDD5) else Color(0xFF1F120D))
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -4279,7 +4301,7 @@ fun EmiWorkspacePage(
                             colors = SliderDefaults.colors(
                                 thumbColor = NeonGreen,
                                 activeTrackColor = NeonGreen.copy(alpha = 0.5f),
-                                inactiveTrackColor = Color(0xFF262626)
+                                inactiveTrackColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626)
                             )
                         )
 
@@ -4300,7 +4322,7 @@ fun EmiWorkspacePage(
                             colors = SliderDefaults.colors(
                                 thumbColor = NeonGreen,
                                 activeTrackColor = NeonGreen.copy(alpha = 0.5f),
-                                inactiveTrackColor = Color(0xFF262626)
+                                inactiveTrackColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626)
                             )
                         )
 
@@ -4321,7 +4343,7 @@ fun EmiWorkspacePage(
                             colors = SliderDefaults.colors(
                                 thumbColor = NeonGreen,
                                 activeTrackColor = NeonGreen.copy(alpha = 0.5f),
-                                inactiveTrackColor = Color(0xFF262626)
+                                inactiveTrackColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626)
                             )
                         )
 
@@ -4332,7 +4354,7 @@ fun EmiWorkspacePage(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFF18181A))
+                                .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF18181A))
                                 .padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -4749,7 +4771,7 @@ fun SipWorkspacePage(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF0F141F))
+                                    .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFEFF6FF) else Color(0xFF0F141F))
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -4758,7 +4780,7 @@ fun SipWorkspacePage(
                                     Text(
                                         text = "Calendar alarm linked: Auto-debits on day ${sip.dayOfMonth}th of month",
                                         fontSize = 10.sp,
-                                        color = Color(0xFF60A5FA),
+                                        color = if (LocalCssThemeVariables.current.isLight) Color(0xFF1D4ED8) else Color(0xFF60A5FA),
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
@@ -4838,7 +4860,7 @@ fun SipWorkspacePage(
                             colors = SliderDefaults.colors(
                                 thumbColor = Color(0xFF3B82F6),
                                 activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
-                                inactiveTrackColor = Color(0xFF262626)
+                                inactiveTrackColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626)
                             )
                         )
 
@@ -4859,7 +4881,7 @@ fun SipWorkspacePage(
                             colors = SliderDefaults.colors(
                                 thumbColor = Color(0xFF3B82F6),
                                 activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
-                                inactiveTrackColor = Color(0xFF262626)
+                                inactiveTrackColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626)
                             )
                         )
 
@@ -4880,7 +4902,7 @@ fun SipWorkspacePage(
                             colors = SliderDefaults.colors(
                                 thumbColor = Color(0xFF3B82F6),
                                 activeTrackColor = Color(0xFF3B82F6).copy(alpha = 0.5f),
-                                inactiveTrackColor = Color(0xFF262626)
+                                inactiveTrackColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626)
                             )
                         )
 
@@ -4891,7 +4913,7 @@ fun SipWorkspacePage(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFF18181A))
+                                .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF18181A))
                                 .padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -4905,7 +4927,7 @@ fun SipWorkspacePage(
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                                 Text("TOTAL VALUE", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                                Text(currencyFormatter.format(sipFutureValue), fontSize = 13.sp, color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold)
+                                Text(currencyFormatter.format(sipFutureValue), fontSize = 13.sp, color = SipBlue, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -5002,19 +5024,20 @@ fun SplitsWorkspacePage(
                 .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(12.dp))
                 .padding(4.dp)
         ) {
+            val isLight = LocalCssThemeVariables.current.isLight
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (mainTab == "p2p") {
-                            if (LocalCssThemeVariables.current.isLight) Color.White else NeonGreen.copy(alpha = 0.15f)
+                            NeonGreen.copy(alpha = if (isLight) 0.18f else 0.15f)
                         } else Color.Transparent
                     )
                     .border(
                         width = 1.dp,
                         color = if (mainTab == "p2p") {
-                            if (LocalCssThemeVariables.current.isLight) BorderColor else NeonGreen.copy(alpha = 0.25f)
+                            NeonGreen.copy(alpha = if (isLight) 0.35f else 0.25f)
                         } else Color.Transparent,
                         shape = RoundedCornerShape(8.dp)
                     )
@@ -5035,13 +5058,13 @@ fun SplitsWorkspacePage(
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (mainTab == "groups") {
-                            if (LocalCssThemeVariables.current.isLight) Color.White else AccentOrange.copy(alpha = 0.15f)
+                            AccentOrange.copy(alpha = if (isLight) 0.18f else 0.15f)
                         } else Color.Transparent
                     )
                     .border(
                         width = 1.dp,
                         color = if (mainTab == "groups") {
-                            if (LocalCssThemeVariables.current.isLight) BorderColor else AccentOrange.copy(alpha = 0.25f)
+                            AccentOrange.copy(alpha = if (isLight) 0.35f else 0.25f)
                         } else Color.Transparent,
                         shape = RoundedCornerShape(8.dp)
                     )
@@ -5650,7 +5673,7 @@ fun CreditWorkspacePage(
                                     .fillMaxWidth()
                                     .height(4.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF262626))
+                                    .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626))
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -5721,7 +5744,11 @@ fun CreditWorkspacePage(
                     .clip(RoundedCornerShape(24.dp))
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(
+                            colors = if (LocalCssThemeVariables.current.isLight) listOf(
+                                Color(0xFFEFF6FF), // Soft light sky blue
+                                Color(0xFFF8FAFC), // Pure soft slate
+                                Color(0xFFF5F3FF)  // Soft lavender
+                            ) else listOf(
                                 Color(0x334F46E5), // Translucent Indigo
                                 Color(0x1A0F172A), // Dark slate
                                 Color(0x228B5CF6)  // Translucent Purple
@@ -5732,7 +5759,8 @@ fun CreditWorkspacePage(
                         BorderStroke(
                             1.dp,
                             Brush.verticalGradient(
-                                listOf(Color(0x40FFFFFF), Color(0x06FFFFFF))
+                                if (LocalCssThemeVariables.current.isLight) listOf(Color(0xFFCBD5E1), Color(0xFFE2E8F0))
+                                else listOf(Color(0x40FFFFFF), Color(0x06FFFFFF))
                             )
                         ),
                         shape = RoundedCornerShape(24.dp)
@@ -5748,7 +5776,7 @@ fun CreditWorkspacePage(
                         Text(
                             text = cardBrand,
                             fontSize = 12.sp,
-                            color = Color(0xFFD4D4D8), // Zinc 300
+                            color = TextGray,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp
                         )
@@ -5844,7 +5872,7 @@ fun CreditWorkspacePage(
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF262626))
+                            .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF262626))
                     ) {
                         Box(
                             modifier = Modifier
@@ -7478,13 +7506,13 @@ fun DetailedTripWorkspaceView(
                         .clip(RoundedCornerShape(6.dp))
                         .background(
                             if (isSelected) {
-                                if (isLight) Color.White else accent.copy(alpha = 0.15f)
+                                accent.copy(alpha = if (isLight) 0.18f else 0.15f)
                             } else Color.Transparent
                         )
                         .border(
                             width = 1.dp,
                             color = if (isSelected) {
-                                if (isLight) BorderColor else accent.copy(alpha = 0.25f)
+                                accent.copy(alpha = if (isLight) 0.35f else 0.25f)
                             } else Color.Transparent,
                             shape = RoundedCornerShape(6.dp)
                         )
