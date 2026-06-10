@@ -121,4 +121,124 @@ class Repository(private val dao: WealthPulseDao) {
 
     // Budgets
     val allBudgets: Flow<List<BudgetEntity>> = dao.getAllBudgets("guest")
+
+    // Stage 5 Loans
+    val allLoans: Flow<List<LoanEntity>> = dao.getAllLoans("guest")
+    val allSchedules: Flow<List<LoanScheduleEntity>> = dao.getAllSchedulesForUser("guest")
+
+    // Stage 6 Group Splitwise & Debt Management
+    val allGroups: Flow<List<GroupEntity>> = dao.getAllGroups("guest")
+    val allGroupBalances: Flow<List<BalanceEntity>> = dao.getAllGroupBalances()
+
+    suspend fun insertGroup(group: GroupEntity): Long = dao.insertGroup(group)
+    suspend fun deleteGroup(id: Int) = dao.deleteGroup(id)
+
+    fun getMembersForGroup(groupId: Int): Flow<List<MemberEntity>> = dao.getMembersForGroup(groupId)
+    suspend fun getMembersForGroupSync(groupId: Int): List<MemberEntity> = dao.getMembersForGroupSync(groupId)
+    suspend fun insertMembers(members: List<MemberEntity>) = dao.insertMembers(members)
+    suspend fun deleteMembersForGroup(groupId: Int) = dao.deleteMembersForGroup(groupId)
+
+    fun getExpensesForGroup(groupId: Int): Flow<List<SplitExpenseEntity>> = dao.getExpensesForGroup(groupId)
+    suspend fun getExpensesForGroupSync(groupId: Int): List<SplitExpenseEntity> = dao.getExpensesForGroupSync(groupId)
+    suspend fun insertSplitExpense(expense: SplitExpenseEntity): Long = dao.insertSplitExpense(expense)
+    suspend fun deleteSplitExpense(id: Int) = dao.deleteSplitExpense(id)
+
+    fun getSettlementsForGroup(groupId: Int): Flow<List<SettlementEntity>> = dao.getSettlementsForGroup(groupId)
+    suspend fun getSettlementsForGroupSync(groupId: Int): List<SettlementEntity> = dao.getSettlementsForGroupSync(groupId)
+    suspend fun insertSettlement(settlement: SettlementEntity): Long = dao.insertSettlement(settlement)
+    suspend fun deleteSettlement(id: Int) = dao.deleteSettlement(id)
+
+    fun getBalancesForGroup(groupId: Int): Flow<List<BalanceEntity>> = dao.getBalancesForGroup(groupId)
+    suspend fun insertBalances(balances: List<BalanceEntity>) = dao.insertBalances(balances)
+    suspend fun deleteBalancesForGroup(groupId: Int) = dao.deleteBalancesForGroup(groupId)
+
+    // Reports Preparation (Stage 6)
+    suspend fun getGroupExpenseTotal(groupId: Int): Double {
+        return dao.getExpensesForGroupSync(groupId).sumOf { it.amount }
+    }
+
+    suspend fun getMemberContributions(groupId: Int): Map<String, Double> {
+        val expenses = dao.getExpensesForGroupSync(groupId)
+        return expenses.groupBy { it.paidBy }.mapValues { entry -> entry.value.sumOf { it.amount } }
+    }
+
+    suspend fun getOutstandingBalances(groupId: Int): Map<String, Double> {
+        val members = dao.getMembersForGroupSync(groupId).map { it.memberName }
+        val expenses = dao.getExpensesForGroupSync(groupId)
+        val settlements = dao.getSettlementsForGroupSync(groupId)
+
+        val netBalances = mutableMapOf<String, Double>()
+        members.forEach { netBalances[it] = 0.0 }
+
+        // Process Expenses
+        expenses.forEach { exp ->
+            // Credit the payer
+            netBalances[exp.paidBy] = (netBalances[exp.paidBy] ?: 0.0) + exp.amount
+
+            // Debit split shares
+            val participants = exp.involvedMembers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            if (participants.isNotEmpty()) {
+                val shares = exp.participantShares.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                when (exp.splitType) {
+                    "EQUAL" -> {
+                        val share = exp.amount / participants.size
+                        participants.forEach { p ->
+                            netBalances[p] = (netBalances[p] ?: 0.0) - share
+                        }
+                    }
+                    "EXACT" -> {
+                        participants.forEachIndexed { idx, p ->
+                            val sVal = shares.getOrNull(idx)?.toDoubleOrNull() ?: 0.0
+                            netBalances[p] = (netBalances[p] ?: 0.0) - sVal
+                        }
+                    }
+                    "PERCENT" -> {
+                        participants.forEachIndexed { idx, p ->
+                            val pct = shares.getOrNull(idx)?.toDoubleOrNull() ?: 0.0
+                            val share = exp.amount * (pct / 100.0)
+                            netBalances[p] = (netBalances[p] ?: 0.0) - share
+                        }
+                    }
+                    "SHARE" -> {
+                        val weights = shares.map { it.toDoubleOrNull() ?: 1.0 }
+                        val totalWeights = weights.sum()
+                        if (totalWeights > 0.0) {
+                            participants.forEachIndexed { idx, p ->
+                                val w = weights.getOrNull(idx) ?: 1.0
+                                val share = exp.amount * (w / totalWeights)
+                                netBalances[p] = (netBalances[p] ?: 0.0) - share
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Process Settlements
+        settlements.forEach { set ->
+            // Payer gets money back (outstanding increases/improves, so credits outstanding balance)
+            netBalances[set.payer] = (netBalances[set.payer] ?: 0.0) + set.amount
+            // Receiver got money, so outstanding becomes negative (decreases)
+            netBalances[set.receiver] = (netBalances[set.receiver] ?: 0.0) - set.amount
+        }
+
+        return netBalances
+    }
+
+    suspend fun getSettlementStats(groupId: Int): Map<String, Double> {
+        val settlements = dao.getSettlementsForGroupSync(groupId)
+        val totalSettled = settlements.sumOf { it.amount }
+        val count = settlements.size.toDouble()
+        return mapOf(
+            "totalSettled" to totalSettled,
+            "settlementsCount" to count
+        )
+    }
+
+    // Unified Ledger Entries
+    val allUnifiedLedgerEntries: Flow<List<UnifiedLedgerEntry>> = dao.getAllUnifiedLedgerEntries()
+    suspend fun insertUnifiedLedgerEntry(entry: UnifiedLedgerEntry) = dao.insertUnifiedLedgerEntry(entry)
+    suspend fun deleteUnifiedLedgerEntry(id: Int) = dao.deleteUnifiedLedgerEntry(id)
+    suspend fun deleteUnifiedLedgerEntryByReferenceId(referenceId: String) = dao.deleteUnifiedLedgerEntryByReferenceId(referenceId)
+    suspend fun clearUnifiedLedgerEntries() = dao.clearUnifiedLedgerEntries()
 }

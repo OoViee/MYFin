@@ -13,6 +13,12 @@ interface WealthPulseDao {
     @Query("SELECT * FROM daily_expenses ORDER BY timestamp DESC")
     fun getAllDailyExpenses(): Flow<List<DailyExpenseEntity>>
 
+    @Query("SELECT * FROM daily_expenses ORDER BY timestamp DESC")
+    suspend fun getAllDailyExpensesDirect(): List<DailyExpenseEntity>
+
+    @Query("SELECT * FROM daily_expenses WHERE id = :id")
+    suspend fun getDailyExpenseByIdDirect(id: Int): DailyExpenseEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDailyExpense(expense: DailyExpenseEntity)
 
@@ -64,6 +70,9 @@ interface WealthPulseDao {
     // Income Paydays
     @Query("SELECT * FROM income_paydays ORDER BY timestamp DESC")
     fun getAllIncomePaydays(): Flow<List<IncomePaydayEntity>>
+
+    @Query("SELECT * FROM income_paydays ORDER BY timestamp DESC")
+    suspend fun getAllIncomePaydaysDirect(): List<IncomePaydayEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIncomePayday(income: IncomePaydayEntity)
@@ -240,6 +249,159 @@ interface WealthPulseDao {
 
     @Query("DELETE FROM card_payments WHERE id = :id")
     suspend fun deleteCardPayment(id: Int)
+
+    // Stage 5: Loan & EMI Queries
+    @Query("SELECT * FROM loans WHERE userId = :userId ORDER BY createdAt DESC")
+    fun getAllLoans(userId: String): Flow<List<LoanEntity>>
+
+    @Query("SELECT * FROM loans WHERE id = :id LIMIT 1")
+    suspend fun getLoanById(id: Int): LoanEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLoan(loan: LoanEntity): Long
+
+    @Query("DELETE FROM loans WHERE id = :id")
+    suspend fun deleteLoan(id: Int)
+
+    @Query("SELECT * FROM loan_schedules WHERE loanId = :loanId ORDER BY installmentNumber ASC")
+    fun getSchedulesForLoan(loanId: Int): Flow<List<LoanScheduleEntity>>
+
+    @Query("SELECT * FROM loan_schedules WHERE loanId = :loanId ORDER BY installmentNumber ASC")
+    suspend fun getSchedulesForLoanSync(loanId: Int): List<LoanScheduleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLoanSchedules(schedules: List<LoanScheduleEntity>)
+
+    @Query("DELETE FROM loan_schedules WHERE loanId = :loanId")
+    suspend fun deleteSchedulesForLoan(loanId: Int)
+
+    @Query("SELECT * FROM loan_payments WHERE loanId = :loanId ORDER BY paymentDate DESC")
+    fun getPaymentsForLoan(loanId: Int): Flow<List<LoanPaymentEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLoanPayment(payment: LoanPaymentEntity): Long
+
+    @Query("DELETE FROM loan_payments WHERE id = :id")
+    suspend fun deleteLoanPayment(id: Int)
+
+    // For Calendar: fetch all schedules for user in ascending order of due date
+    @Query("SELECT * FROM loan_schedules WHERE userId = :userId ORDER BY dueDate ASC")
+    fun getAllSchedulesForUser(userId: String): Flow<List<LoanScheduleEntity>>
+
+    // For Alerts / Home: nearest upcoming pending EMI
+    @Query("SELECT * FROM loan_schedules WHERE userId = :userId AND paymentStatus != 'Paid' AND paymentStatus != 'Completed' AND paymentStatus != 'Prepaid' ORDER BY dueDate ASC")
+    fun getUpcomingPendingSchedules(userId: String): Flow<List<LoanScheduleEntity>>
+
+    // Stage 6 Group Splitwise Expense & Debts
+    @Query("SELECT * FROM `groups` WHERE userId = :userId ORDER BY updatedDate DESC")
+    fun getAllGroups(userId: String = "guest"): Flow<List<GroupEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGroup(group: GroupEntity): Long
+
+    @Query("DELETE FROM `groups` WHERE id = :id")
+    suspend fun deleteGroup(id: Int)
+
+    @Query("SELECT * FROM group_members WHERE groupId = :groupId")
+    fun getMembersForGroup(groupId: Int): Flow<List<MemberEntity>>
+
+    @Query("SELECT * FROM group_members WHERE groupId = :groupId")
+    suspend fun getMembersForGroupSync(groupId: Int): List<MemberEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMembers(members: List<MemberEntity>)
+
+    @Query("DELETE FROM group_members WHERE groupId = :groupId")
+    suspend fun deleteMembersForGroup(groupId: Int)
+
+    @Query("SELECT * FROM split_expenses WHERE groupId = :groupId ORDER BY expenseDate DESC")
+    fun getExpensesForGroup(groupId: Int): Flow<List<SplitExpenseEntity>>
+
+    @Query("SELECT * FROM split_expenses WHERE groupId = :groupId ORDER BY expenseDate DESC")
+    suspend fun getExpensesForGroupSync(groupId: Int): List<SplitExpenseEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSplitExpense(expense: SplitExpenseEntity): Long
+
+    @Query("DELETE FROM split_expenses WHERE id = :id")
+    suspend fun deleteSplitExpense(id: Int)
+
+    @Query("SELECT * FROM group_settlements WHERE groupId = :groupId ORDER BY date DESC")
+    fun getSettlementsForGroup(groupId: Int): Flow<List<SettlementEntity>>
+
+    @Query("SELECT * FROM group_settlements WHERE groupId = :groupId ORDER BY date DESC")
+    suspend fun getSettlementsForGroupSync(groupId: Int): List<SettlementEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSettlement(settlement: SettlementEntity): Long
+
+    @Query("DELETE FROM group_settlements WHERE id = :id")
+    suspend fun deleteSettlement(id: Int)
+
+    @Query("SELECT * FROM group_balances WHERE groupId = :groupId")
+    fun getBalancesForGroup(groupId: Int): Flow<List<BalanceEntity>>
+
+    @Query("SELECT * FROM group_balances")
+    fun getAllGroupBalances(): Flow<List<BalanceEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBalances(balances: List<BalanceEntity>)
+
+    @Query("DELETE FROM group_balances WHERE groupId = :groupId")
+    suspend fun deleteBalancesForGroup(groupId: Int)
+
+    // Stage 7 Trip & Event Management
+    @Query("SELECT * FROM trips WHERE userId = :userId ORDER BY updatedAt DESC")
+    fun getAllTrips(userId: String = "guest"): Flow<List<TripEntity>>
+
+    @Query("SELECT * FROM trips WHERE id = :id")
+    fun getTripById(id: Int): Flow<TripEntity?>
+
+    @Query("SELECT * FROM trips WHERE id = :id")
+    suspend fun getTripByIdSync(id: Int): TripEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTrip(trip: TripEntity): Long
+
+    @Query("DELETE FROM trips WHERE id = :id")
+    suspend fun deleteTrip(id: Int)
+
+    @Query("SELECT * FROM trip_participants WHERE tripId = :tripId ORDER BY name ASC")
+    fun getParticipantsForTrip(tripId: Int): Flow<List<TripParticipantEntity>>
+
+    @Query("SELECT * FROM trip_participants WHERE tripId = :tripId ORDER BY name ASC")
+    suspend fun getParticipantsForTripSync(tripId: Int): List<TripParticipantEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTripParticipants(participants: List<TripParticipantEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTripParticipant(participant: TripParticipantEntity): Long
+
+    @Query("DELETE FROM trip_participants WHERE tripId = :tripId")
+    suspend fun deleteParticipantsForTrip(tripId: Int)
+
+    @Query("DELETE FROM trip_participants WHERE participantId = :participantId")
+    suspend fun deleteTripParticipant(participantId: Int)
+
+    // Unified Financial Ledger Queries
+    @Query("SELECT * FROM unified_ledger_entries ORDER BY timestamp DESC")
+    fun getAllUnifiedLedgerEntries(): Flow<List<UnifiedLedgerEntry>>
+
+    @Query("SELECT * FROM unified_ledger_entries ORDER BY timestamp DESC")
+    suspend fun getAllUnifiedLedgerEntriesSync(): List<UnifiedLedgerEntry>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUnifiedLedgerEntry(entry: UnifiedLedgerEntry): Long
+
+    @Query("DELETE FROM unified_ledger_entries WHERE id = :id")
+    suspend fun deleteUnifiedLedgerEntry(id: Int)
+
+    @Query("DELETE FROM unified_ledger_entries WHERE referenceId = :referenceId")
+    suspend fun deleteUnifiedLedgerEntryByReferenceId(referenceId: String)
+
+    @Query("DELETE FROM unified_ledger_entries")
+    suspend fun clearUnifiedLedgerEntries()
 }
 
 data class CategorySpending(

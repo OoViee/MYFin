@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.DailyExpenseEntity
 import com.example.data.ExpenseMetaData
+import com.example.data.UnifiedLedgerEntry
 import com.example.ui.viewmodel.WealthPulseViewModel
 import com.example.ui.viewmodel.ExpenseFilters
 import java.text.NumberFormat
@@ -122,7 +123,7 @@ fun ExpensesWorkspaceHub(
             
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Sub-nav tabs: Production List Ledger vs Original Chrono Ledger
+            // Sub-nav tabs: Production List Ledger, Original Chrono Ledger, and Account Transfers
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -133,7 +134,8 @@ fun ExpensesWorkspaceHub(
             ) {
                 listOf(
                     Pair("list", "📊 Advanced Ledger"),
-                    Pair("calendar", "📆 Calendar Chrono")
+                    Pair("calendar", "📆 Calendar Chrono"),
+                    Pair("transfer", "🔄 Account Transfers")
                 ).forEach { (tabId, label) ->
                     val isSelected = expenseSubTab == tabId
                     Box(
@@ -149,7 +151,9 @@ fun ExpensesWorkspaceHub(
                             text = label,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 12.sp
+                            fontSize = 10.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -356,7 +360,7 @@ fun ExpensesWorkspaceHub(
                     }
                 }
             }
-        } else {
+        } else if (expenseSubTab == "calendar") {
             // ORIGINAL CALENDAR LEDGER VIEWPORT
             Box(modifier = Modifier.weight(1f)) {
                 com.example.CalendarWorkspacePage(
@@ -367,6 +371,14 @@ fun ExpensesWorkspaceHub(
                     incomePaydays = viewModel.incomePaydays.collectAsState().value,
                     currencyFormatter = currencyFormatter,
                     viewModel = viewModel
+                )
+            }
+        } else if (expenseSubTab == "transfer") {
+            // ACCOUNT TRANSFERS VIEWPORT
+            Box(modifier = Modifier.weight(1f)) {
+                AccountTransfersViewport(
+                    viewModel = viewModel,
+                    currencyFormatter = currencyFormatter
                 )
             }
         }
@@ -1424,5 +1436,356 @@ fun DetailRow(label: String, value: String) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+fun AccountTransfersViewport(
+    viewModel: WealthPulseViewModel,
+    currencyFormatter: NumberFormat
+) {
+    val ledgerEntries by viewModel.unifiedLedgerEntries.collectAsState()
+    val transfersList = remember(ledgerEntries) {
+        ledgerEntries.filter { it.type == "Transfer" }.sortedByDescending { it.timestamp }
+    }
+
+    var amountInput by remember { mutableStateOf("") }
+    var sourceAccount by remember { mutableStateOf("Bank") }
+    var destAccount by remember { mutableStateOf("Wallet") }
+    var notesInput by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    // Compute dynamic real-time balances from standard base starters
+    val (cashBal, bankBal, walletBal) = remember(ledgerEntries) {
+        var cash = 12000.0
+        var bank = 48000.0
+        var wallet = 45000.0
+        // Apply deltas sequentially
+        for (entry in ledgerEntries.sortedBy { it.timestamp }) {
+            val amt = entry.amount
+            when (entry.type) {
+                "Income" -> {
+                    when (com.example.data.FinancialLedgerEngine.getPaymentMethodCategory(entry.paymentMode)) {
+                        "Cash" -> cash += amt
+                        "Wallet" -> wallet += amt
+                        "Bank" -> bank += amt
+                    }
+                }
+                "Expense", "Credit Card Expense" -> {
+                    when (com.example.data.FinancialLedgerEngine.getPaymentMethodCategory(entry.paymentMode)) {
+                        "Cash" -> cash -= amt
+                        "Wallet" -> wallet -= amt
+                        "Bank" -> bank -= amt
+                    }
+                }
+                "Transfer" -> {
+                    when (entry.sourceAccount) {
+                        "Cash" -> cash -= amt
+                        "Wallet" -> wallet -= amt
+                        "Bank" -> bank -= amt
+                    }
+                    when (entry.destAccount) {
+                        "Cash" -> cash += amt
+                        "Wallet" -> wallet += amt
+                        "Bank" -> bank += amt
+                    }
+                }
+                "Credit Card Payment", "EMI Payment", "Loan Repayment", "Investment" -> {
+                    when (com.example.data.FinancialLedgerEngine.getPaymentMethodCategory(entry.paymentMode)) {
+                        "Cash" -> cash -= amt
+                        "Wallet" -> wallet -= amt
+                        "Bank" -> bank -= amt
+                    }
+                }
+                "Redemption" -> {
+                    when (com.example.data.FinancialLedgerEngine.getPaymentMethodCategory(entry.paymentMode)) {
+                        "Cash" -> cash += amt
+                        "Wallet" -> wallet += amt
+                        "Bank" -> bank += amt
+                    }
+                }
+                "Settlement" -> {
+                    if (entry.category == "Paid") {
+                        when (com.example.data.FinancialLedgerEngine.getPaymentMethodCategory(entry.paymentMode)) {
+                            "Cash" -> cash -= amt
+                            "Wallet" -> wallet -= amt
+                            "Bank" -> bank -= amt
+                        }
+                    } else {
+                        when (com.example.data.FinancialLedgerEngine.getPaymentMethodCategory(entry.paymentMode)) {
+                            "Cash" -> cash += amt
+                            "Wallet" -> wallet += amt
+                            "Bank" -> bank += amt
+                        }
+                    }
+                }
+            }
+        }
+        Triple(cash, bank, wallet)
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Real-Time Account Balances Overview Card
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "REAL-TIME BALANCES",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Bank
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("🏦 Bank / UPI", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(currencyFormatter.format(bankBal), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        // Wallet
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("📱 Wallet", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(currencyFormatter.format(walletBal), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        // Cash
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Text("💵 Cash", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(currencyFormatter.format(cashBal), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+            }
+        }
+
+        // New Transfer Input Card
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "RECORD NEW TRANSFER",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        letterSpacing = 1.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Source and Destination Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Source Selector
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("From Source Account", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            listOf("Bank", "Wallet", "Cash").forEach { acc ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { sourceAccount = acc }
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    RadioButton(selected = sourceAccount == acc, onClick = { sourceAccount = acc })
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(acc, fontSize = 12.sp)
+                                }
+                            }
+                        }
+
+                        // Dest Selector
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("To Destination Account", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            listOf("Bank", "Wallet", "Cash").forEach { acc ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { destAccount = acc }
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    RadioButton(selected = destAccount == acc, onClick = { destAccount = acc })
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(acc, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = amountInput,
+                        onValueChange = { amountInput = it },
+                        label = { Text("Transfer Amount (₹)", fontSize = 12.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("transfer_amount_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = notesInput,
+                        onValueChange = { notesInput = it },
+                        label = { Text("Transfer Purpose / Notes", fontSize = 12.sp) },
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("transfer_notes_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            val amt = amountInput.toDoubleOrNull()
+                            if (amt == null || amt <= 0.0) {
+                                android.widget.Toast.makeText(context, "Please enter a valid transfer amount", android.widget.Toast.LENGTH_SHORT).show()
+                            } else if (sourceAccount == destAccount) {
+                                android.widget.Toast.makeText(context, "Source and destination accounts must be different", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.recordTransfer(
+                                    amount = amt,
+                                    sourceAccount = sourceAccount,
+                                    destAccount = destAccount,
+                                    notes = notesInput.ifBlank { "Routine Account Transfer" },
+                                    timestamp = System.currentTimeMillis()
+                                )
+                                amountInput = ""
+                                notesInput = ""
+                                android.widget.Toast.makeText(context, "Transfer successfully registered!", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("record_transfer_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Transfer")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Record Account Transfer", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+
+        // Previous Transfers Title
+        item {
+            Text(
+                text = "▪ PREVIOUS TRANSFER LOGS",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+        }
+
+        if (transfersList.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No transfers recorded yet", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        } else {
+            items(transfersList, key = { it.id }) { entry ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🔄", fontSize = 16.sp)
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "${entry.sourceAccount} ➜ ${entry.destAccount}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = entry.description.ifBlank { "Account Transfer" },
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(entry.timestamp)),
+                                    fontSize = 9.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = currencyFormatter.format(entry.amount),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(onClick = { viewModel.deleteLedgerEntry(entry.id) }) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete transfer",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

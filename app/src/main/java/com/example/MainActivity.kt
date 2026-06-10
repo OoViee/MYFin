@@ -2,6 +2,7 @@ package com.example
 
 import android.os.Bundle
 import android.widget.Toast
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -162,6 +163,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val context = LocalContext.current
+            val isFirstLaunchPref = remember { context.getSharedPreferences("myfin_launch_prefs", android.content.Context.MODE_PRIVATE) }
+            var isFirstLaunch by remember { mutableStateOf(isFirstLaunchPref.getBoolean("is_first_launch", true)) }
+            var showTempEmailAuthOnboarding by remember { mutableStateOf(false) }
+
+            val showMigrationDialog by viewModel.showMigrationDialog.collectAsState()
+
             WealthPulseTheme(variables = themeVariables) {
                 Scaffold(
                     modifier = Modifier
@@ -175,6 +183,34 @@ class MainActivity : ComponentActivity() {
                             .padding(innerPadding),
                         viewModel = viewModel
                     )
+
+                    if (isFirstLaunch) {
+                        OnboardingDialog(
+                            onDismissOnboarding = {
+                                isFirstLaunch = false
+                                isFirstLaunchPref.edit().putBoolean("is_first_launch", false).apply()
+                            },
+                            viewModel = viewModel,
+                            onShowEmailAuth = {
+                                showTempEmailAuthOnboarding = true
+                            }
+                        )
+                    }
+
+                    if (showTempEmailAuthOnboarding) {
+                        AuthDialog(
+                            onDismiss = {
+                                showTempEmailAuthOnboarding = false
+                                isFirstLaunch = false
+                                isFirstLaunchPref.edit().putBoolean("is_first_launch", false).apply()
+                            },
+                            viewModel = viewModel
+                        )
+                    }
+
+                    if (showMigrationDialog) {
+                        MigrationDialog(viewModel = viewModel)
+                    }
                 }
             }
         }
@@ -1186,12 +1222,8 @@ fun FinancialWorkspaceScreen(
                             viewModel = viewModel
                         )
                     } else if (activeNavigationMenuTab == "emi") {
-                        EmiWorkspacePage(
-                            emiLoans = emiLoans,
-                            totalEmi = totalEmi,
-                            currencyFormatter = currencyFormatter,
-                            viewModel = viewModel,
-                            onTriggerManual = { type -> activeManualDialog = type }
+                        com.example.ui.LoanWorkspaceHub(
+                            currencyFormatter = currencyFormatter
                         )
                     } else if (activeNavigationMenuTab == "sip") {
                         SipWorkspacePage(
@@ -3108,6 +3140,7 @@ fun SettingsWorkspacePage(
     var highPrecisionParser by remember { mutableStateOf(true) }
 
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val currentUser by viewModel.currentUser.collectAsState()
     val currentUserId by viewModel.currentUserId.collectAsState()
     var showAuthDialog by remember { mutableStateOf(false) }
@@ -3278,6 +3311,167 @@ fun SettingsWorkspacePage(
                         ) {
                             Icon(imageVector = Icons.Default.Person, contentDescription = "Security login key icon", tint = NavyBg, modifier = Modifier.size(16.dp))
                             Text("SECURELY LOCK & PERSIST MY DATA", fontSize = 12.sp, color = NavyBg, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (currentUser != null) {
+            val syncStats by viewModel.syncManager.syncStats.collectAsState()
+            val isSimulatedOnline by viewModel.syncManager.isSimulatedOnline.collectAsState()
+            var syncInProgress by remember { mutableStateOf(false) }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, if (syncInProgress) NeonGreen else BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .testTag("sync_dashboard_status_card")
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "CLOUD DATABASE SYNC DASHBOARD",
+                        fontSize = 11.sp,
+                        color = NeonGreen,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Multi-Device Real-time Indexing",
+                        fontSize = 15.sp,
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Network Mode", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = if (isSimulatedOnline) "Sandbox Simulation (Mock Firestore)" else "Production Live Network",
+                                fontSize = 10.sp,
+                                color = TextGray
+                            )
+                        }
+                        Switch(
+                            checked = isSimulatedOnline,
+                            onCheckedChange = { viewModel.syncManager.setSimulatedOnline(it) },
+                            modifier = Modifier.testTag("simulate_network_switch")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = BorderColor)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Last Backup Status:", fontSize = 12.sp, color = TextGray)
+                        Text(
+                            text = syncStats.lastSyncTime,
+                            fontSize = 11.sp,
+                            color = NeonGreen,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text("Sync Queue Status Details:", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("• Connection State:", fontSize = 12.sp, color = TextWhite)
+                        Text(
+                            text = if (isSimulatedOnline) "Sandbox Linked" else syncStats.health.name,
+                            fontSize = 11.sp,
+                            color = NeonGreen,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("• Pending snaps queued:", fontSize = 12.sp, color = TextWhite)
+                        Text(
+                            text = "${syncStats.pendingUploads} operations",
+                            fontSize = 11.sp,
+                            color = if (syncStats.pendingUploads > 0) cssVar("--accent") else TextWhite,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("• Sync Retry Failures:", fontSize = 12.sp, color = TextWhite)
+                        Text(
+                            text = "${syncStats.failedSyncs} failures",
+                            fontSize = 11.sp,
+                            color = if (syncStats.failedSyncs > 0) cssVar("--danger") else TextWhite,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    if (syncInProgress) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = NeonGreen)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Uploading secure snapshots...", style = MaterialTheme.typography.bodySmall, color = NeonGreen)
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                syncInProgress = true
+                                coroutineScope.launch {
+                                    val success = viewModel.syncManager.syncNow(currentUserId)
+                                    syncInProgress = false
+                                    if (success) {
+                                        Toast.makeText(context, "Cloud sync complete!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Offline mode / Sync retry queued safely.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .testTag("force_sync_now_btn")
+                        ) {
+                            Text("TRIGGER CLOUD FORCE SYNC", fontSize = 12.sp, color = NavyBg, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -4927,7 +5121,7 @@ fun SipWorkspacePage(
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                                 Text("TOTAL VALUE", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                                Text(currencyFormatter.format(sipFutureValue), fontSize = 13.sp, color = SipBlue, fontWeight = FontWeight.Bold)
+                                Text(currencyFormatter.format(sipFutureValue), fontSize = 13.sp, color = Color(0xFF3B82F6), fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -4948,469 +5142,7 @@ fun SplitsWorkspacePage(
     allParticipants: List<ParticipantEntity>,
     onTriggerManual: (String) -> Unit
 ) {
-    var mainTab by remember { mutableStateOf("p2p") } // "p2p" or "groups"
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedGroupFilter by remember { mutableStateOf("All") }
-    
-    // Detailed Selected Trip Workspace
-    var selectedTripId by remember { mutableStateOf<Int?>(null) }
-    
-    // Creators
-    var showCreateTripDialog by remember { mutableStateOf(false) }
-
-    val filteredDebts = debtSplits.filter {
-        val matchesQuery = it.description.contains(searchQuery, ignoreCase = true) || 
-                           it.debtPersonInvolved.contains(searchQuery, ignoreCase = true) ||
-                           it.groupName.contains(searchQuery, ignoreCase = true)
-        val matchesGroup = when (selectedGroupFilter) {
-            "All" -> true
-            "Group Splits" -> it.isGroupSplit
-            else -> !it.isGroupSplit
-        }
-        matchesQuery && matchesGroup
-    }
-
-    val lentItems = debtSplits.filter { !it.description.contains("borrow", ignoreCase = true) && !it.description.contains("owe", ignoreCase = true) }
-    val borrowItems = debtSplits.filter { it.description.contains("borrow", ignoreCase = true) || it.description.contains("owe", ignoreCase = true) }
-
-    // Dynamic aggregates based purely on the UNPAID shares of each split
-    val totalLentSum = lentItems.sumOf { debt ->
-        val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val unpaidCount = participants.filter { !paidList.contains(it) }.size
-        val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
-        individualShare * unpaidCount
-    }
-    
-    val totalBorrowSum = borrowItems.sumOf { debt ->
-        val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val unpaidCount = participants.filter { !paidList.contains(it) }.size
-        val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
-        individualShare * unpaidCount
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
-        // Upper Title Header
-        Text(
-            text = "👥 MULTI-DIMENSIONAL SPLIT LEDGER",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF78716C), // Stone 500
-            letterSpacing = 2.sp
-        )
-        Text(
-            text = if (mainTab == "p2p") "P2P & Roommate Balances" else "Shared Trips & Group Workspace",
-            fontSize = 24.sp,
-            fontFamily = FontFamily.Serif,
-            color = TextWhite,
-            fontWeight = FontWeight.Light,
-            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-
-        // Theme-compliant dynamic segment selector
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else SurfaceBlue)
-                .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(12.dp))
-                .padding(4.dp)
-        ) {
-            val isLight = LocalCssThemeVariables.current.isLight
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (mainTab == "p2p") {
-                            NeonGreen.copy(alpha = if (isLight) 0.18f else 0.15f)
-                        } else Color.Transparent
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (mainTab == "p2p") {
-                            NeonGreen.copy(alpha = if (isLight) 0.35f else 0.25f)
-                        } else Color.Transparent,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable { mainTab = "p2p" }
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Peer-to-Peer 👤",
-                    color = if (mainTab == "p2p") NeonGreen else TextGray,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (mainTab == "groups") {
-                            AccentOrange.copy(alpha = if (isLight) 0.18f else 0.15f)
-                        } else Color.Transparent
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (mainTab == "groups") {
-                            AccentOrange.copy(alpha = if (isLight) 0.35f else 0.25f)
-                        } else Color.Transparent,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable { mainTab = "groups" }
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Trips & Groups 🌴",
-                    color = if (mainTab == "groups") AccentOrange else TextGray,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        if (mainTab == "p2p") {
-
-        // Aggregated Dashboard Summary
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, BorderColor),
-            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "NET OUTSTANDING BALANCE",
-                    fontSize = 11.sp,
-                    color = TextGray,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = currencyFormatter.format(totalLentSum - totalBorrowSum),
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Light,
-                    color = if (totalLentSum >= totalBorrowSum) NeonGreen else DangerRed,
-                    fontFamily = FontFamily.Serif,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("ACTIVE CLAIMS (LENT)", fontSize = 10.sp, color = TextGray)
-                        Text(currencyFormatter.format(totalLentSum), fontSize = 15.sp, color = NeonGreen, fontWeight = FontWeight.Bold)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("YOUR LIABILITIES (BORROWED)", fontSize = 10.sp, color = TextGray)
-                        Text(currencyFormatter.format(totalBorrowSum), fontSize = 15.sp, color = DangerRed, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        // Search & Filter Row
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            label = { Text("Search by person, split description, room...", color = TextGray) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextGray) },
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = LocalTextStyle.current.copy(color = TextWhite),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Split Filter Tags
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf("All", "Group Splits", "Personal Splits").forEach { filter ->
-                val isSelected = selectedGroupFilter == filter
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isSelected) NeonGreen.copy(alpha = 0.15f) else Color.Transparent,
-                    border = BorderStroke(1.dp, if (isSelected) NeonGreen else BorderColor),
-                    modifier = Modifier.clickable { selectedGroupFilter = filter }
-                ) {
-                    Text(
-                        text = filter,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSelected) NeonGreen else TextGray,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        // Header Row for Split Actions
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "📊 ACTIVE P2P TRANSACTIONS (${filteredDebts.size})",
-                fontSize = 11.sp,
-                color = TextGray,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp
-            )
-            Button(
-                onClick = { onTriggerManual("DEBT") },
-                colors = ButtonDefaults.buttonColors(containerColor = SurfaceBlue),
-                border = BorderStroke(1.dp, Color(0xFF1D2636)),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Record Split", fontSize = 11.sp, color = TextWhite)
-            }
-        }
-
-        if (filteredDebts.isEmpty()) {
-            EmptyStatePlaceholder("No matching splits found. Check presets or hit '+ Record Split'!")
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                filteredDebts.forEach { debt ->
-                    val isLent = !debt.description.contains("borrow", ignoreCase = true) && !debt.description.contains("owe", ignoreCase = true)
-                    
-                    // Parse split participants and their payment statuses
-                    val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                    val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                    val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
-                    
-                    // Amount remaining unpaid on this split
-                    val unpaidCount = participants.filter { !paidList.contains(it) }.size
-                    val remainingUnpaidSplitAmount = individualShare * unpaidCount
-
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-                        border = BorderStroke(1.dp, BorderColor),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = if (isLent) Color(0x2210B981) else Color(0x22EF4444),
-                                            modifier = Modifier.padding(end = 8.dp)
-                                        ) {
-                                            Text(
-                                                text = if (isLent) "LENT SPLIT" else "BORROWED SPLIT",
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isLent) NeonGreen else DangerRed,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                        if (debt.isGroupSplit && debt.groupName.isNotBlank()) {
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color = Color(0x223B82F6),
-                                                modifier = Modifier.padding(end = 8.dp)
-                                            ) {
-                                                Text(
-                                                    text = debt.groupName.uppercase(),
-                                                    fontSize = 9.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF60A5FA),
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = debt.description,
-                                        fontSize = 15.sp,
-                                        color = TextWhite,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = currencyFormatter.format(remainingUnpaidSplitAmount),
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isLent) NeonGreen else DangerRed
-                                    )
-                                    if (unpaidCount < participants.size) {
-                                        Text(
-                                            text = "Total: ${currencyFormatter.format(debt.amount)}",
-                                            fontSize = 11.sp,
-                                            color = TextGray,
-                                            style = androidx.compose.ui.text.TextStyle(
-                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                                            )
-                                        )
-                                    } else {
-                                        Text(
-                                            text = "Total Split",
-                                            fontSize = 10.sp,
-                                            color = TextGray
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                            HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // Highlight individual members and toggle their payment
-                            Text(
-                                text = "👥 SPLIT SHARES & PAYMENT STATUS (TAP ON A CHIP TO MARK AS PAID):",
-                                fontSize = 9.sp,
-                                color = TextGray,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp,
-                                modifier = Modifier.padding(bottom = 6.dp)
-                            )
-
-                            if (participants.isEmpty()) {
-                                Text("No participants added", fontSize = 12.sp, color = TextGray)
-                            } else {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    participants.forEach { person ->
-                                        val hasPaid = paidList.contains(person)
-                                        val chipBg = if (hasPaid) Color(0x1F10B981) else Color(0x1FEF4444)
-                                        val chipBorder = if (hasPaid) Color(0x3310B981) else Color(0x33EF4444)
-                                        val chipContentColor = if (hasPaid) NeonGreen else Color(0xFFFCA5A5)
-
-                                        Surface(
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = chipBg,
-                                            border = BorderStroke(1.dp, chipBorder),
-                                            modifier = Modifier.clickable {
-                                                viewModel.toggleDebtPersonPaidStatus(debt.id, person)
-                                            }
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = if (hasPaid) Icons.Default.Check else Icons.Default.Refresh,
-                                                    contentDescription = null,
-                                                    tint = chipContentColor,
-                                                    modifier = Modifier.size(12.dp)
-                                                )
-                                                Text(
-                                                    text = "$person: ${currencyFormatter.format(individualShare)}",
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = chipContentColor
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val unpaidCountText = if (unpaidCount == 0) "All Paid Off! ✨" else "$unpaidCount/${participants.size} Pending"
-                                Text(
-                                    text = unpaidCountText,
-                                    fontSize = 11.sp,
-                                    color = if (unpaidCount == 0) NeonGreen else TextGray,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                Button(
-                                    onClick = { viewModel.deleteDebt(debt.id) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceBlue),
-                                    border = BorderStroke(1.dp, BorderColor),
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(28.dp)
-                                ) {
-                                    Text(
-                                        text = if (unpaidCount == 0) "Dismiss" else "Settle All",
-                                        fontSize = 10.sp,
-                                        color = TextWhite,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        } else {
-            // NEW GROUP / EVENT / TRIP WORKSPACE (SPLITWISE DETAILED FEATURING)
-            GroupTripsDashboard(
-                tripEvents = tripEvents,
-                tripExpenses = tripExpenses,
-                allParticipants = allParticipants,
-                selectedTripId = selectedTripId,
-                onTripSelect = { selectedTripId = it },
-                onShowCreateTrip = { showCreateTripDialog = true },
-                currencyFormatter = currencyFormatter,
-                viewModel = viewModel
-            )
-        }
-        Spacer(modifier = Modifier.height(100.dp))
-    }
-
-    // Trip Creation Dialog
-    if (showCreateTripDialog) {
-        TripCreationDialog(
-            allParticipants = allParticipants,
-            onDismiss = { showCreateTripDialog = false },
-            onCreate = { name, desc, start, end, isPublic, selectedPList ->
-                viewModel.createTrip(name, desc, start, end, isPublic, selectedPList)
-                showCreateTripDialog = false
-            },
-            viewModel = viewModel
-        )
-    }
+    com.example.ui.SplitsWorkspaceHub(currencyFormatter = currencyFormatter)
 }
 
 @Composable
@@ -8435,4 +8167,289 @@ fun calculateSimplifiedSettlements(
     }
     
     return transactions
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OnboardingDialog(
+    onDismissOnboarding: () -> Unit,
+    viewModel: WealthPulseViewModel,
+    onShowEmailAuth: () -> Unit
+) {
+    val context = LocalContext.current
+    var loading by remember { mutableStateOf(false) }
+    var showGoogleFallbackPrompt by remember { mutableStateOf(false) }
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken("default-dummy-aistudio-key-for-myfin")
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account?.idToken
+            val googleEmail = account?.email
+            if (idToken != null) {
+                loading = true
+                viewModel.signInWithGoogle(
+                    idToken = idToken,
+                    email = googleEmail,
+                    onSuccess = {
+                        loading = false
+                        Toast.makeText(context, "Successfully authenticated with Google!", Toast.LENGTH_SHORT).show()
+                        onDismissOnboarding()
+                    },
+                    onError = { err ->
+                        loading = false
+                        Toast.makeText(context, "Google sign-in error: $err", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            } else {
+                if (googleEmail != null) {
+                    loading = true
+                    viewModel.performFallbackGoogleSignIn(googleEmail) {
+                        loading = false
+                        Toast.makeText(context, "Signed in with Google Account (Sandbox Fallback)", Toast.LENGTH_SHORT).show()
+                        onDismissOnboarding()
+                    }
+                } else {
+                    Toast.makeText(context, "Failed to retrieve Google Auth Credentials.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            showGoogleFallbackPrompt = true
+        }
+    }
+
+    Dialog(onDismissRequest = {}) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, cssVar("--border")),
+            colors = CardDefaults.cardColors(containerColor = cssVar("--surface")),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .testTag("onboarding_dialog_card")
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Welcome to MYFin 🚀",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = cssVar("--primary")
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Your secure, offline-first personal finance engine. Sign in to synchronize your data automatically across devices.",
+                    fontSize = 13.sp,
+                    color = cssVar("--text-gray"),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+
+                if (loading) {
+                    CircularProgressIndicator(color = cssVar("--primary"))
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (showGoogleFallbackPrompt) {
+                    var emailInput by remember { mutableStateOf("") }
+                    Text(
+                        text = "Enter Google Email to Simulate Login:",
+                        fontSize = 11.sp,
+                        color = cssVar("--accent"),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = emailInput,
+                        onValueChange = { emailInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("e.g. user@gmail.com", fontSize = 12.sp, color = cssVar("--text-gray")) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            loading = true
+                            viewModel.performFallbackGoogleSignIn(emailInput) {
+                                loading = false
+                                Toast.makeText(context, "Simulated Google Auth Success!", Toast.LENGTH_SHORT).show()
+                                onDismissOnboarding()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = cssVar("--primary")),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                    ) {
+                        Text("Confirm Simulate Google Login", color = Color.White)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                } else {
+                    Button(
+                        onClick = {
+                            try {
+                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                            } catch (e: Exception) {
+                                showGoogleFallbackPrompt = true
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = cssVar("--primary")),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .testTag("google_auth_btn")
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = Icons.Default.AccountCircle, contentDescription = "Google Sign In", tint = Color.White)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Sign In with Google", color = Color.White)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                Button(
+                    onClick = onShowEmailAuth,
+                    colors = ButtonDefaults.buttonColors(containerColor = cssVar("--secondary")),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("email_auth_btn")
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Email, contentDescription = "Email Sign In", tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sign In with Email", color = Color.White)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = onDismissOnboarding,
+                    border = BorderStroke(1.dp, cssVar("--border")),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("continue_offline_btn")
+                ) {
+                    Text("Continue Offline (Guest Sandbox)", color = cssVar("--text-white"))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MigrationDialog(
+    viewModel: WealthPulseViewModel
+) {
+    val context = LocalContext.current
+    Dialog(onDismissRequest = {}) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, cssVar("--border")),
+            colors = CardDefaults.cardColors(containerColor = cssVar("--surface")),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .testTag("migration_dialog_card")
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Local Guest Data Found! 🗄️",
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = cssVar("--accent")
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "We detected existing local financial records. How would you like to link them to your cloud account?",
+                    fontSize = 13.sp,
+                    color = cssVar("--text-gray"),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = {
+                        viewModel.mergeLocalData()
+                        Toast.makeText(context, "Local data merged with cloud backups!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = cssVar("--primary")),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("merge_local_cloud_btn")
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Merge Local + Cloud Data", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Integrates device history into cloud backing (Safe)", fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f))
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        viewModel.replaceCloudData()
+                        Toast.makeText(context, "Cloud backups overwritten with local profile!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = cssVar("--secondary")),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("repl_cloud_with_local_btn")
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Replace Cloud with Local", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Forces remote profiles to match current device data", fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f))
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        viewModel.replaceLocalData()
+                        Toast.makeText(context, "Local records replaced with cloud backups!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = cssVar("--danger")),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .testTag("repl_local_with_cloud_btn")
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Replace Local with Cloud", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Discards local records and loads cloud history snapshot", fontSize = 10.sp, color = Color.White.copy(alpha = 0.8f))
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(
+                    onClick = { viewModel.dismissMigrationDialog() },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
+                    Text("Skip Migration for Now", color = cssVar("--text-white"))
+                }
+            }
+        }
+    }
 }

@@ -15,7 +15,13 @@ data class DashboardData(
     val budgetSnapshot: List<BudgetCategoryLimit>,
     val youOwe: Double,
     val youAreOwed: Double,
-    val recentTransactions: List<RecentTransaction>
+    val recentTransactions: List<RecentTransaction>,
+    val hasCreditCards: Boolean,
+    val hasLoans: Boolean,
+    val hasBudgets: Boolean,
+    val hasSplits: Boolean,
+    val hasTrips: Boolean,
+    val netAvailableMoney: Double
 )
 
 data class UpcomingObligation(
@@ -56,7 +62,12 @@ class DashboardRepository(private val repository: Repository) {
         repository.allSipRecords,
         repository.allInvestmentRecords,
         repository.allCreditCards,
-        repository.allBudgets
+        repository.allBudgets,
+        repository.allSchedules,
+        repository.allLoans,
+        repository.allGroupBalances,
+        repository.allTripEvents,
+        repository.allUnifiedLedgerEntries
     ) { flows ->
         @Suppress("UNCHECKED_CAST")
         val daily = flows[0] as List<DailyExpenseEntity>
@@ -76,6 +87,16 @@ class DashboardRepository(private val repository: Repository) {
         val creditCards = flows[7] as List<CreditCardEntity>
         @Suppress("UNCHECKED_CAST")
         val budgetsList = flows[8] as List<BudgetEntity>
+        @Suppress("UNCHECKED_CAST")
+        val schedules = flows[9] as List<LoanScheduleEntity>
+        @Suppress("UNCHECKED_CAST")
+        val loans = flows[10] as List<LoanEntity>
+        @Suppress("UNCHECKED_CAST")
+        val groupBalances = flows[11] as List<BalanceEntity>
+        @Suppress("UNCHECKED_CAST")
+        val tripEvents = flows[12] as List<TripEventEntity>
+        @Suppress("UNCHECKED_CAST")
+        val ledgerEntries = flows[13] as List<UnifiedLedgerEntry>
 
         val calendar = Calendar.getInstance()
         val currentYear = calendar.get(Calendar.YEAR)
@@ -109,28 +130,28 @@ class DashboardRepository(private val repository: Repository) {
         // Financial Health Card: Upcoming obligations
         val obligations = mutableListOf<UpcomingObligation>()
 
-        // Process EMIs
-        emi.forEach { e ->
-            val eCal = Calendar.getInstance().apply { timeInMillis = e.timestamp }
-            var emiDueDay = eCal.get(Calendar.DAY_OF_MONTH)
-            if (emiDueDay == 0 || emiDueDay > 28) emiDueDay = 5 // Safe fallback
+        // Process Stage 5 EMI & Loan schedules dynamically (Only nearest EMI should be displayed)
+        val nowTime = System.currentTimeMillis()
+        val pendingSchedules = schedules.filter { 
+            it.paymentStatus != "Paid" && it.paymentStatus != "Completed" && it.paymentStatus != "Prepaid"
+        }.sortedBy { it.dueDate }
 
-            var daysLeft = emiDueDay - currentDay
-            if (daysLeft < 0) {
-                daysLeft += daysInMonth
-            }
-            if (e.remainingMonths > 0) {
-                obligations.add(
-                    UpcomingObligation(
-                        key = "emi_${e.id}",
-                        type = "EMI",
-                        description = e.description.ifEmpty { "EMI Loan Payment" },
-                        amount = e.amount,
-                        daysRemaining = daysLeft,
-                        isDueTomorrow = daysLeft == 1
-                    )
+        val nearestEmi = pendingSchedules.firstOrNull()
+        if (nearestEmi != null) {
+            val matchingLoan = loans.find { it.id == nearestEmi.loanId }
+            val daysLeftStr = ((nearestEmi.dueDate - nowTime) / (1000 * 60 * 60 * 24)).toInt()
+            val daysLeft = if (daysLeftStr < 0) 0 else daysLeftStr
+            
+            obligations.add(
+                UpcomingObligation(
+                    key = "loan_emi_${nearestEmi.id}",
+                    type = "EMI",
+                    description = matchingLoan?.loanName ?:"EMI Payment Due",
+                    amount = nearestEmi.emiAmount,
+                    daysRemaining = daysLeft,
+                    isDueTomorrow = daysLeft == 1
                 )
-            }
+            )
         }
 
         // Process Credit Cards (due)
@@ -217,20 +238,27 @@ class DashboardRepository(private val repository: Repository) {
         }
 
         // Split Expense Summary
-        val totalLentSum = splits.filter { !it.description.contains("borrow", ignoreCase = true) && !it.description.contains("owe", ignoreCase = true) }.sumOf { debt ->
+        var totalLentSum = splits.filter { !it.description.contains("borrow", ignoreCase = true) && !it.description.contains("owe", ignoreCase = true) }.sumOf { debt ->
             val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val unpaidCount = participants.filter { !paidList.contains(it) }.size
             val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
             individualShare * unpaidCount
         }
-        val totalBorrowSum = splits.filter { it.description.contains("borrow", ignoreCase = true) || it.description.contains("owe", ignoreCase = true) }.sumOf { debt ->
+        var totalBorrowSum = splits.filter { it.description.contains("borrow", ignoreCase = true) || it.description.contains("owe", ignoreCase = true) }.sumOf { debt ->
             val participants = debt.debtPersonInvolved.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val paidList = debt.paidPeople.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val unpaidCount = participants.filter { !paidList.contains(it) }.size
             val individualShare = if (participants.isNotEmpty()) debt.amount / participants.size else 0.0
             individualShare * unpaidCount
         }
+
+        // Add Group splits of "You"
+        val myGroupLent = groupBalances.filter { it.memberName == "You" && it.netBalance > 0.0 }.sumOf { it.netBalance }
+        val myGroupBorrowed = groupBalances.filter { it.memberName == "You" && it.netBalance < 0.0 }.sumOf { -it.netBalance }
+
+        totalLentSum += myGroupLent
+        totalBorrowSum += myGroupBorrowed
 
         // Recent Transactions (latest 10 entries across all modules)
         val transactionPool = mutableListOf<RecentTransaction>()
@@ -307,6 +335,23 @@ class DashboardRepository(private val repository: Repository) {
         // Sort by timestamp desc and take latest 10
         val sortedTransactions = transactionPool.sortedByDescending { it.timestamp }.take(10)
 
+        val hasCreditCards = creditCards.isNotEmpty()
+        val hasLoans = loans.isNotEmpty()
+        val hasBudgets = budgetsList.isNotEmpty()
+        val hasSplits = splits.isNotEmpty() || groupBalances.isNotEmpty() || totalBorrowSum > 0.0 || totalLentSum > 0.0
+        val hasTrips = tripEvents.isNotEmpty()
+
+        val cardOutstanding = creditCards.sumOf { it.outstandingAmount }
+        val loanObligations = loans.sumOf { it.outstandingBalance }
+
+        val netAvailableMoney = FinancialLedgerEngine.computeNetAvailableMoney(
+            ledgerEntries = ledgerEntries,
+            recoverableDebt = totalLentSum,
+            outstandingDebt = totalBorrowSum,
+            cardOutstanding = cardOutstanding,
+            loanObligations = loanObligations
+        )
+
         DashboardData(
             currentMonthIncome = currentIncomeSum,
             currentMonthExpenses = currentExpenseSum,
@@ -317,7 +362,13 @@ class DashboardRepository(private val repository: Repository) {
             budgetSnapshot = budgetSnapshot,
             youOwe = totalBorrowSum,
             youAreOwed = totalLentSum,
-            recentTransactions = sortedTransactions
+            recentTransactions = sortedTransactions,
+            hasCreditCards = hasCreditCards,
+            hasLoans = hasLoans,
+            hasBudgets = hasBudgets,
+            hasSplits = hasSplits,
+            hasTrips = hasTrips,
+            netAvailableMoney = netAvailableMoney
         )
     }
 }

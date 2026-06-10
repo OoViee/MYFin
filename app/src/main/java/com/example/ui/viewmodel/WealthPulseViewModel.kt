@@ -44,6 +44,13 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
     private val repository: Repository
     private var firebaseAuth: FirebaseAuth? = null
 
+    val syncManager = SyncManager(application, db.dao())
+    val syncStats = syncManager.syncStats
+    val isSimulatedOnline = syncManager.isSimulatedOnline
+
+    val showMigrationDialog = MutableStateFlow(false)
+    var pendingMigrationUserId: String? = null
+
     private val _currentUser = MutableStateFlow<UserProfile?>(null)
     val currentUser: StateFlow<UserProfile?> = _currentUser.asStateFlow()
 
@@ -100,6 +107,9 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                 _currentUserId.value = "guest"
             }
         }
+        
+        // Continuous/On-demand startup sync to guarantee historical ledger correctness
+        triggerSync()
     }
 
     // Dynamic Streams filtered based on currentUserId
@@ -465,8 +475,20 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun addManualIncome(amount: Double, desc: String, frequency: String) {
         viewModelScope.launch {
+            val isGuest = currentUserId.value == "guest"
             repository.insertIncomePayday(
-                IncomePaydayEntity(amount = amount, currency = "INR", description = desc, category = "Salary", incomeFrequency = frequency, paymentMode = "Bank Transfer", userId = currentUserId.value)
+                IncomePaydayEntity(
+                    amount = amount,
+                    currency = "INR",
+                    description = desc,
+                    category = "Salary",
+                    incomeFrequency = frequency,
+                    paymentMode = "Bank Transfer",
+                    userId = currentUserId.value,
+                    syncStatus = if (isGuest) "SYNCED" else "PENDING_UPLOAD",
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = System.currentTimeMillis()
+                )
             )
         }
     }
@@ -630,7 +652,22 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
             repository.insertDebtSplit(debt.copy(paidPeople = newPaidPeople))
         }
     }
-    fun deleteIncome(id: Int) = viewModelScope.launch { repository.deleteIncomePayday(id) }
+    fun deleteIncome(id: Int) = viewModelScope.launch {
+        val existing = db.dao().getAllIncomePaydaysDirect().find { it.id == id }
+        if (existing != null) {
+            if (currentUserId.value == "guest") {
+                repository.deleteIncomePayday(id)
+            } else {
+                repository.insertIncomePayday(
+                    existing.copy(
+                        isDeleted = true,
+                        syncStatus = "PENDING_DELETE",
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+    }
     fun deleteSip(id: Int) = viewModelScope.launch { repository.deleteSipRecord(id) }
     fun deleteInvestment(id: Int) = viewModelScope.launch { repository.deleteInvestmentRecord(id) }
 
@@ -815,6 +852,8 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                         )
                         _currentUser.value = userProfile
                         _currentUserId.value = userProfile.uid
+                        syncManager.updateConnectedAccount(userProfile.email)
+                        checkForLocalGuestData(userProfile.uid)
                         onSuccess()
                     } else {
                         onError("Failed to create user session.")
@@ -850,6 +889,8 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         val userProfile = UserProfile(uid = newUid, email = email, isAnonymous = false)
         _currentUser.value = userProfile
         _currentUserId.value = newUid
+        syncManager.updateConnectedAccount(userProfile.email)
+        checkForLocalGuestData(userProfile.uid)
         onSuccess()
     }
 
@@ -871,6 +912,8 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                         )
                         _currentUser.value = userProfile
                         _currentUserId.value = userProfile.uid
+                        syncManager.updateConnectedAccount(userProfile.email)
+                        checkForLocalGuestData(userProfile.uid)
                         onSuccess()
                     } else {
                         onError("Failed to start user session.")
@@ -909,6 +952,8 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         val userProfile = UserProfile(uid = newUid, email = email, isAnonymous = false)
         _currentUser.value = userProfile
         _currentUserId.value = newUid
+        syncManager.updateConnectedAccount(userProfile.email)
+        checkForLocalGuestData(userProfile.uid)
         onSuccess()
     }
 
@@ -986,6 +1031,8 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                             .putString("saved_uid", userProfile.uid)
                             .putString("saved_email", userProfile.email)
                             .apply()
+                        syncManager.updateConnectedAccount(userProfile.email)
+                        checkForLocalGuestData(userProfile.uid)
                         onSuccess()
                     } else {
                         onError("Failed to start Google sign-in session.")
@@ -1011,6 +1058,8 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         val userProfile = UserProfile(uid = newUid, email = resolvedEmail, isAnonymous = false)
         _currentUser.value = userProfile
         _currentUserId.value = newUid
+        syncManager.updateConnectedAccount(userProfile.email)
+        checkForLocalGuestData(userProfile.uid)
         onSuccess()
     }
 
@@ -1106,6 +1155,7 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         cardId: Int = 0
     ) {
         viewModelScope.launch {
+            val isGuest = currentUserId.value == "guest"
             val expense = DailyExpenseEntity(
                 amount = amount,
                 currency = "INR",
@@ -1124,6 +1174,7 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                 isDeleted = false,
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis(),
+                syncStatus = if (isGuest) "SYNCED" else "PENDING_UPLOAD",
                 cardId = cardId
             )
             repository.insertDailyExpense(expense)
@@ -1135,6 +1186,7 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                 }
                 updateCardOutstanding(cardName, amount)
             }
+            triggerSync()
         }
     }
 
@@ -1158,6 +1210,7 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
             val existing = dailyExpenses.value.find { it.id == id }
             val diffAmount = if (existing != null) amount - existing.amount else 0.0
             
+            val isGuest = currentUserId.value == "guest"
             val expense = DailyExpenseEntity(
                 id = id,
                 amount = amount,
@@ -1177,9 +1230,13 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                 isDeleted = false,
                 createdAt = existing?.createdAt ?: System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis(),
+                syncStatus = if (isGuest) "SYNCED" else "PENDING_UPLOAD",
                 cardId = cardId
             )
             repository.insertDailyExpense(expense)
+            
+            // Re-sync after edit
+            repository.deleteUnifiedLedgerEntryByReferenceId("daily_${id}")
             
             if (paymentMode == "Credit Card" || paymentMode.contains("Credit", ignoreCase = true)) {
                 if (diffAmount != 0.0) {
@@ -1193,6 +1250,7 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                     updateCardOutstanding(cardName, diffAmount)
                 }
             }
+            triggerSync()
         }
     }
 
@@ -1200,11 +1258,16 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             val existing = dailyExpenses.value.find { it.id == id }
             if (existing != null) {
+                val isGuest = currentUserId.value == "guest"
                 val deletedExpense = existing.copy(
                     isDeleted = true,
-                    updatedAt = System.currentTimeMillis()
+                    updatedAt = System.currentTimeMillis(),
+                    syncStatus = if (isGuest) "SYNCED" else "PENDING_DELETE"
                 )
                 repository.insertDailyExpense(deletedExpense)
+                
+                // Keep ledger entry synchronized (delete referenced expense)
+                repository.deleteUnifiedLedgerEntryByReferenceId("daily_${id}")
                 
                 if (existing.paymentMode == "Credit Card" || existing.paymentMode.contains("Credit", ignoreCase = true)) {
                     val cardName = if (existing.cardId > 0) {
@@ -1214,6 +1277,153 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
                     }
                     decreaseCardOutstanding(cardName, existing.amount)
                 }
+            }
+        }
+    }
+
+    // --- UNIFIED LEDGER FOR TRANSFERS & CROSS-MODULE SYNC ---
+
+    val unifiedLedgerEntries: StateFlow<List<UnifiedLedgerEntry>> = repository.allUnifiedLedgerEntries
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun recordTransfer(amount: Double, sourceAccount: String, destAccount: String, notes: String, timestamp: Long) {
+        viewModelScope.launch {
+            val entry = UnifiedLedgerEntry(
+                amount = amount,
+                currency = "INR",
+                category = "Account Transfer",
+                description = if (notes.isNotBlank()) "Transfer: $notes ($sourceAccount to $destAccount)" else "Transfer from $sourceAccount to $destAccount",
+                paymentMode = sourceAccount,
+                timestamp = timestamp,
+                userId = currentUserId.value,
+                type = "Transfer",
+                sourceAccount = sourceAccount,
+                destAccount = destAccount,
+                referenceId = "transfer_${System.currentTimeMillis()}"
+            )
+            repository.insertUnifiedLedgerEntry(entry)
+        }
+    }
+
+    fun deleteLedgerEntry(id: Int) {
+        viewModelScope.launch {
+            repository.deleteUnifiedLedgerEntry(id)
+        }
+    }
+
+    fun triggerSync() {
+        viewModelScope.launch {
+            val uid = _currentUserId.value
+            try {
+                // Collect first items of flow securely
+                val dailyList = repository.allDailyExpenses.stateIn(this).value
+                val incomeList = repository.allIncomePaydays.stateIn(this).value
+                val currentLedger = repository.allUnifiedLedgerEntries.stateIn(this).value
+
+                for (expense in dailyList.filter { it.userId == uid && !it.isDeleted }) {
+                    val refId = "daily_${expense.id}"
+                    if (currentLedger.none { it.referenceId == refId }) {
+                        val isCard = expense.paymentMode == "Credit Card" || expense.paymentMode.contains("credit", true)
+                        val type = if (isCard) "Credit Card Expense" else "Expense"
+                        
+                        // If notes exist on expense, append them cleanly to ledger description
+                        val fullDesc = if (expense.notes.isNotBlank()) "${expense.description} (${expense.notes})" else expense.description
+
+                        repository.insertUnifiedLedgerEntry(
+                            UnifiedLedgerEntry(
+                                amount = expense.amount,
+                                currency = expense.currency,
+                                category = expense.category,
+                                description = fullDesc,
+                                paymentMode = expense.paymentMode,
+                                timestamp = expense.timestamp,
+                                userId = expense.userId,
+                                type = type,
+                                referenceId = refId
+                            )
+                        )
+                    }
+                }
+
+                for (income in incomeList.filter { it.userId == uid }) {
+                    val refId = "income_${income.id}"
+                    if (currentLedger.none { it.referenceId == refId }) {
+                        repository.insertUnifiedLedgerEntry(
+                            UnifiedLedgerEntry(
+                                amount = income.amount,
+                                currency = income.currency,
+                                category = income.category,
+                                description = income.description,
+                                paymentMode = income.paymentMode,
+                                timestamp = income.timestamp,
+                                userId = income.userId,
+                                type = "Income",
+                                referenceId = refId
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MYFin", "Dynamic ledger sync error: ${e.message}")
+            }
+        }
+    }
+
+    fun checkForLocalGuestData(newUserId: String) {
+        viewModelScope.launch {
+            try {
+                val guestExpenses = db.dao().getAllDailyExpensesDirect().filter { it.userId == "guest" }
+                val guestIncomes = db.dao().getAllIncomePaydaysDirect().filter { it.userId == "guest" }
+                if (guestExpenses.isNotEmpty() || guestIncomes.isNotEmpty()) {
+                    pendingMigrationUserId = newUserId
+                    showMigrationDialog.value = true
+                } else {
+                    syncManager.syncNow(newUserId)
+                }
+            } catch (e: Exception) {
+                syncManager.syncNow(newUserId)
+            }
+        }
+    }
+
+    fun mergeLocalData() {
+        val uid = pendingMigrationUserId ?: return
+        showMigrationDialog.value = false
+        pendingMigrationUserId = null
+        viewModelScope.launch {
+            syncManager.mergeLocalWithCloud(uid)
+        }
+    }
+
+    fun replaceCloudData() {
+        val uid = pendingMigrationUserId ?: return
+        showMigrationDialog.value = false
+        pendingMigrationUserId = null
+        viewModelScope.launch {
+            syncManager.replaceCloudWithLocal(uid)
+        }
+    }
+
+    fun replaceLocalData() {
+        val uid = pendingMigrationUserId ?: return
+        showMigrationDialog.value = false
+        pendingMigrationUserId = null
+        viewModelScope.launch {
+            syncManager.replaceLocalWithCloud(uid)
+        }
+    }
+
+    fun dismissMigrationDialog() {
+        val uid = pendingMigrationUserId
+        showMigrationDialog.value = false
+        pendingMigrationUserId = null
+        if (uid != null) {
+            viewModelScope.launch {
+                syncManager.syncNow(uid)
             }
         }
     }

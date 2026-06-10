@@ -99,6 +99,14 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // SECTION 1.5: Net Available Money Card (True Financial Position)
+                    NetAvailableMoneyCard(
+                        netMoney = data.netAvailableMoney,
+                        currencyFormatter = currencyFormatter
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     // SECTION 2: Financial Summary Card (Hero Section)
                     FinancialSummaryCard(
                         income = data.currentMonthIncome,
@@ -112,37 +120,90 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // SECTION 3: Financial Health Card (Upcoming Obligations)
-                    DashboardSectionHeader(title = "Upcoming Payments")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FinancialHealthCard(
-                        obligations = data.upcomingObligations,
-                        currencyFormatter = currencyFormatter
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                    val filteredObligations = data.upcomingObligations.filter { ob ->
+                        (ob.type != "Credit Card" || data.hasCreditCards) &&
+                        (ob.type != "EMI" || data.hasLoans)
+                    }
+                    if (filteredObligations.isNotEmpty()) {
+                        DashboardSectionHeader(title = "Upcoming Payments")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FinancialHealthCard(
+                            obligations = filteredObligations,
+                            currencyFormatter = currencyFormatter
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
 
                     // SECTION 4: Budget Snapshot Placeholder
-                    DashboardSectionHeader(title = "Budget Target Space")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    BudgetSnapshotCard(
-                        budgets = data.budgetSnapshot,
-                        currencyFormatter = currencyFormatter,
-                        modifier = Modifier.clickable { onNavigateToTab("budgets") }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                    if (data.hasBudgets) {
+                        DashboardSectionHeader(title = "Budget Target Space")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        BudgetSnapshotCard(
+                            budgets = data.budgetSnapshot,
+                            currencyFormatter = currencyFormatter,
+                            modifier = Modifier.clickable { onNavigateToTab("budgets") }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
 
                     // SECTION 5: Split Expense Summary
-                    DashboardSectionHeader(title = "Shared Splitting Info")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SplitSummaryCard(
-                        youOwe = data.youOwe,
-                        youAreOwed = data.youAreOwed,
-                        currencyFormatter = currencyFormatter,
-                        onViewDetails = { onNavigateToTab("split") }
-                    )
+                    if (data.hasSplits) {
+                        DashboardSectionHeader(title = "Shared Splitting Info")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        SplitSummaryCard(
+                            youOwe = data.youOwe,
+                            youAreOwed = data.youAreOwed,
+                            currencyFormatter = currencyFormatter,
+                            onViewDetails = { onNavigateToTab("split") }
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    // SECTION 5.5: Trip & Event Summary
+                    if (data.hasTrips) {
+                        DashboardSectionHeader(title = "Active Trips Summary")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, BorderColor),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onNavigateToTab("trips") }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("✈️", fontSize = 24.sp)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "Manage Trips & Vacations",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextWhite
+                                        )
+                                        Text(
+                                            text = "Keep travel finance in absolute perfect sync",
+                                            fontSize = 11.sp,
+                                            color = TextGray
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowRight,
+                                    contentDescription = "Navigate to trips",
+                                    tint = NeonGreen
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
 
                     // SECTION 6: Recent Transactions
                     Row(
@@ -248,6 +309,61 @@ fun DashboardGreetingSection(
                 fontSize = 11.sp,
                 color = NeonGreen,
                 fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun NetAvailableMoneyCard(
+    netMoney: Double,
+    currencyFormatter: NumberFormat,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, BorderColor),
+        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("net_available_money_card")
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "TRUE FINANCIAL POSITION",
+                    fontSize = 10.sp,
+                    color = TextGray,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
+                )
+                Text(
+                    text = "Net Available Money",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextWhite,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Text(
+                    text = "Asset Accounts + Recoverables - Liabilities",
+                    fontSize = 9.sp,
+                    color = TextGray,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = currencyFormatter.format(netMoney),
+                fontSize = 22.sp,
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Bold,
+                color = if (netMoney >= 0) NeonGreen else DangerRed
             )
         }
     }
