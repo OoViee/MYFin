@@ -466,7 +466,7 @@ fun FinancialWorkspaceScreen(
 
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Color(0xFF292524), thickness = 1.dp)
+                    HorizontalDivider(color = BorderColor, thickness = 1.dp)
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Row showing values of individual modules
@@ -952,49 +952,60 @@ fun FinancialWorkspaceScreen(
             }
 
             // TAB SCENARDS
+            val isLight = LocalCssThemeVariables.current.isLight
             ScrollableTabRow(
                 selectedTabIndex = activeTab,
-                containerColor = Color.Transparent,
+                containerColor = if (isLight) Color(0xFFE2E8F0) else SurfaceBlue,
                 contentColor = NeonGreen,
-                edgePadding = 0.dp,
-                divider = { HorizontalDivider(color = BorderColor, thickness = 1.dp) },
-                modifier = Modifier.padding(bottom = 12.dp)
+                edgePadding = 4.dp,
+                indicator = {}, // Disable standard underline indicator
+                divider = {}, // Disable default divider for self-contained visual card
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(12.dp))
+                    .padding(vertical = 4.dp)
             ) {
-                Tab(
-                    selected = activeTab == 0,
-                    onClick = { activeTab = 0 },
-                    text = { Text("EXPENSE 💸", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                val tabsList = listOf(
+                    Triple(0, "EXPENSE 💸", NeonGreen),
+                    Triple(1, "CARDS 💳", CreditPurple),
+                    Triple(2, "EMIS 📊", AccentOrange),
+                    Triple(3, "SPLIT 👥", NeonGreen),
+                    Triple(4, "PAYDAY 💰", NeonGreen),
+                    Triple(5, "SIP 📈", SipBlue),
+                    Triple(6, "PORTFOLIO 💼", AccentOrange)
                 )
-                Tab(
-                    selected = activeTab == 1,
-                    onClick = { activeTab = 1 },
-                    text = { Text("CARDS 💳", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = activeTab == 2,
-                    onClick = { activeTab = 2 },
-                    text = { Text("EMIS 📊", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = activeTab == 3,
-                    onClick = { activeTab = 3 },
-                    text = { Text("SPLIT 👥", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = activeTab == 4,
-                    onClick = { activeTab = 4 },
-                    text = { Text("PAYDAY 💰", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = activeTab == 5,
-                    onClick = { activeTab = 5 },
-                    text = { Text("SIP 📈", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = activeTab == 6,
-                    onClick = { activeTab = 6 },
-                    text = { Text("PORTFOLIO 💼", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                )
+                tabsList.forEach { (index, label, accentColor) ->
+                    val isSelected = activeTab == index
+                    Tab(
+                        selected = isSelected,
+                        onClick = { activeTab = index },
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isSelected) {
+                                    if (isLight) Color.White else accentColor.copy(alpha = 0.15f)
+                                } else Color.Transparent
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) {
+                                    if (isLight) BorderColor else accentColor.copy(alpha = 0.25f)
+                                } else Color.Transparent,
+                                shape = RoundedCornerShape(8.dp)
+                            ),
+                        text = {
+                            Text(
+                                text = label,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) accentColor else TextGray
+                            )
+                        }
+                    )
+                }
             }
 
             // LIST VIEWS OF ACTIVE MODULARY TAB
@@ -1203,8 +1214,8 @@ fun FinancialWorkspaceScreen(
                             .background(
                                 Brush.verticalGradient(
                                     colors = listOf(
-                                        NavyBg.copy(alpha = 0.85f),
-                                        NavyBg.copy(alpha = 0.95f)
+                                        SurfaceBlue.copy(alpha = 0.85f),
+                                        SurfaceBlue.copy(alpha = 0.95f)
                                     )
                                 )
                             )
@@ -1429,7 +1440,8 @@ fun FinancialWorkspaceScreen(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFF292524))
+                                        .background(SurfaceBlue)
+                                        .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(6.dp))
                                         .clickable {
                                             val current = fieldAmt.toDoubleOrNull() ?: 0.0
                                             fieldAmt = (current + inc).toInt().toString()
@@ -1442,7 +1454,8 @@ fun FinancialWorkspaceScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFF442D2D))
+                                    .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFFEE2E2) else Color(0xFF442D2D))
+                                    .border(BorderStroke(1.dp, if (LocalCssThemeVariables.current.isLight) Color(0xFFFCA5A5) else Color(0xFF5C2C2C)), RoundedCornerShape(6.dp))
                                     .clickable { fieldAmt = "" }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
@@ -1667,10 +1680,10 @@ fun FinancialWorkspaceScreen(
                                                 .clip(RoundedCornerShape(12.dp))
                                                 .border(
                                                     width = 1.dp,
-                                                    color = if (isSelected) AccentOrange else Color(0xFF292524),
+                                                    color = if (isSelected) AccentOrange else BorderColor,
                                                     shape = RoundedCornerShape(12.dp)
                                                 )
-                                                .background(if (isSelected) AccentOrange.copy(alpha = 0.15f) else Color(0xFF161616))
+                                                .background(if (isSelected) AccentOrange.copy(alpha = 0.15f) else SurfaceBlue)
                                                 .clickable {
                                                     val updatedList = currentPeopleParts.toMutableList()
                                                     if (isSelected) {
@@ -1904,10 +1917,10 @@ fun ManualOptionSelector(
                         .clip(RoundedCornerShape(12.dp))
                         .border(
                             width = 1.dp,
-                            color = if (isSelected) colorAccent else Color(0xFF292524),
+                            color = if (isSelected) colorAccent else BorderColor,
                             shape = RoundedCornerShape(12.dp)
                         )
-                        .background(if (isSelected) colorAccent.copy(alpha = 0.15f) else Color(0xFF161616))
+                        .background(if (isSelected) colorAccent.copy(alpha = 0.15f) else SurfaceBlue)
                         .clickable { onSelect(rawValue) }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
@@ -2356,7 +2369,8 @@ fun CategoryWorkspacePage(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF292524))
+                                .background(SurfaceBlue)
+                                .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(6.dp))
                                 .clickable {
                                     val current = localAmount.toDoubleOrNull() ?: 0.0
                                     localAmount = (current + inc).toInt().toString()
@@ -2369,7 +2383,8 @@ fun CategoryWorkspacePage(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF442D2D))
+                            .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFFEE2E2) else Color(0xFF442D2D))
+                            .border(BorderStroke(1.dp, if (LocalCssThemeVariables.current.isLight) Color(0xFFFCA5A5) else Color(0xFF5C2C2C)), RoundedCornerShape(6.dp))
                             .clickable { localAmount = "" }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
@@ -3008,8 +3023,8 @@ fun UserProfileWorkspacePage(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF161616))
-                    .border(1.dp, Color(0xFF292524), RoundedCornerShape(16.dp))
+                    .background(SurfaceBlue)
+                    .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
                     .padding(12.dp)
             ) {
                 Column {
@@ -3023,8 +3038,8 @@ fun UserProfileWorkspacePage(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF161616))
-                    .border(1.dp, Color(0xFF292524), RoundedCornerShape(16.dp))
+                    .background(SurfaceBlue)
+                    .border(1.dp, BorderColor, RoundedCornerShape(16.dp))
                     .padding(12.dp)
             ) {
                 Column {
@@ -3200,7 +3215,8 @@ fun SettingsWorkspacePage(
                                 Toast.makeText(context, "Signed out safely! Back to Local Sandbox.", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF292524)),
+                        colors = ButtonDefaults.buttonColors(containerColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF292524)),
+                        border = BorderStroke(1.dp, BorderColor),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -3476,7 +3492,7 @@ fun SettingsWorkspacePage(
 
                 if (dbParticipants.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Color(0xFF292524))
+                    HorizontalDivider(color = BorderColor)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
@@ -3830,7 +3846,7 @@ fun EmiWorkspacePage(
                     Button(
                         onClick = { showForm = !showForm },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (showForm) Color(0xFF292524) else NeonGreen
+                            containerColor = if (showForm) BorderColor else NeonGreen
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.testTag("emi_tab_toggle_form_btn")
@@ -3838,7 +3854,7 @@ fun EmiWorkspacePage(
                         Text(
                             text = if (showForm) "Close Form" else "+ Add EMI",
                             fontSize = 11.sp,
-                            color = if (showForm) TextWhite else NavyBg,
+                            color = if (showForm) TextWhite else Color.Black,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -3876,7 +3892,7 @@ fun EmiWorkspacePage(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextWhite,
                             focusedBorderColor = AccentOrange,
-                            unfocusedBorderColor = Color(0xFF292524)
+                            unfocusedBorderColor = BorderColor
                         )
                     )
 
@@ -3893,7 +3909,7 @@ fun EmiWorkspacePage(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = TextWhite,
                                 focusedBorderColor = AccentOrange,
-                                unfocusedBorderColor = Color(0xFF292524)
+                                unfocusedBorderColor = BorderColor
                             )
                         )
 
@@ -3906,7 +3922,7 @@ fun EmiWorkspacePage(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = TextWhite,
                                 focusedBorderColor = AccentOrange,
-                                unfocusedBorderColor = Color(0xFF292524)
+                                unfocusedBorderColor = BorderColor
                             )
                         )
                     }
@@ -3925,8 +3941,8 @@ fun EmiWorkspacePage(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) AccentOrange else Color(0xFF1E1E1F))
-                                    .border(BorderStroke(1.dp, if (isSelected) AccentOrange else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) AccentOrange else (if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF1E1E1F)))
+                                    .border(BorderStroke(1.dp, if (isSelected) AccentOrange else BorderColor), RoundedCornerShape(8.dp))
                                     .clickable { emiDeductionDay = speedDay }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
@@ -3948,7 +3964,7 @@ fun EmiWorkspacePage(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = TextWhite,
                                 focusedBorderColor = AccentOrange,
-                                unfocusedBorderColor = Color(0xFF292524)
+                                unfocusedBorderColor = BorderColor
                             )
                         )
 
@@ -3961,7 +3977,7 @@ fun EmiWorkspacePage(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = TextWhite,
                                 focusedBorderColor = AccentOrange,
-                                unfocusedBorderColor = Color(0xFF292524)
+                                unfocusedBorderColor = BorderColor
                             )
                         )
                     }
@@ -3987,8 +4003,8 @@ fun EmiWorkspacePage(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) AccentOrange.copy(alpha = 0.2f) else Color(0xFF1E1E1F))
-                                    .border(BorderStroke(1.dp, if (isSelected) AccentOrange else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) AccentOrange.copy(alpha = 0.2f) else (if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF1E1E1F)))
+                                    .border(BorderStroke(1.dp, if (isSelected) AccentOrange else BorderColor), RoundedCornerShape(8.dp))
                                     .clickable { emiCategory = categoryVal }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
@@ -4439,7 +4455,7 @@ fun SipWorkspacePage(
                     Button(
                         onClick = { showForm = !showForm },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (showForm) Color(0xFF292524) else NeonGreen
+                            containerColor = if (showForm) BorderColor else NeonGreen
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.testTag("sip_tab_toggle_form_btn")
@@ -4447,7 +4463,7 @@ fun SipWorkspacePage(
                         Text(
                             text = if (showForm) "Close Form" else "+ Add SIP",
                             fontSize = 11.sp,
-                            color = if (showForm) TextWhite else NavyBg,
+                            color = if (showForm) TextWhite else Color.Black,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -4485,7 +4501,7 @@ fun SipWorkspacePage(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextWhite,
                             focusedBorderColor = Color(0xFF3B82F6),
-                            unfocusedBorderColor = Color(0xFF292524)
+                            unfocusedBorderColor = BorderColor
                         )
                     )
 
@@ -4502,7 +4518,7 @@ fun SipWorkspacePage(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = TextWhite,
                                 focusedBorderColor = Color(0xFF3B82F6),
-                                unfocusedBorderColor = Color(0xFF292524)
+                                unfocusedBorderColor = BorderColor
                             )
                         )
 
@@ -4515,7 +4531,7 @@ fun SipWorkspacePage(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = TextWhite,
                                 focusedBorderColor = Color(0xFF3B82F6),
-                                unfocusedBorderColor = Color(0xFF292524)
+                                unfocusedBorderColor = BorderColor
                             )
                         )
                     }
@@ -4534,8 +4550,8 @@ fun SipWorkspacePage(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) Color(0xFF3B82F6) else Color(0xFF1E1E1F))
-                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Color(0xFF3B82F6) else (if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF1E1E1F)))
+                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else BorderColor), RoundedCornerShape(8.dp))
                                     .clickable { sipDayStr = seedDay }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
@@ -4564,12 +4580,12 @@ fun SipWorkspacePage(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) Color(0xFF2563EB).copy(alpha = 0.2f) else Color(0xFF1E1E1F))
-                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Color(0xFF2563EB).copy(alpha = 0.2f) else (if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF1E1E1F)))
+                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else BorderColor), RoundedCornerShape(8.dp))
                                     .clickable { sipCat = dbVal }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
-                                Text(text = label, fontSize = 11.sp, color = if (isSelected) Color(0xFF93C5FD) else TextWhite)
+                                Text(text = label, fontSize = 11.sp, color = if (isSelected) Color(0xFF3B82F6) else TextWhite)
                             }
                         }
                     }
@@ -4587,8 +4603,8 @@ fun SipWorkspacePage(
                                 modifier = Modifier
                                     .padding(end = 8.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) Color(0xFF3B82F6).copy(alpha = 0.1f) else Color.Transparent)
-                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else Color(0xFF292524)), RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Color(0xFF3B82F6).copy(alpha = 0.15f) else Color.Transparent)
+                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else BorderColor), RoundedCornerShape(8.dp))
                                     .clickable { sipFrequency = freq }
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
@@ -5112,7 +5128,7 @@ fun SplitsWorkspacePage(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = if (isSelected) NeonGreen.copy(alpha = 0.15f) else Color.Transparent,
-                    border = BorderStroke(1.dp, if (isSelected) NeonGreen else Color(0xFF292524)),
+                    border = BorderStroke(1.dp, if (isSelected) NeonGreen else BorderColor),
                     modifier = Modifier.clickable { selectedGroupFilter = filter }
                 ) {
                     Text(
@@ -5325,8 +5341,8 @@ fun SplitsWorkspacePage(
 
                                 Button(
                                     onClick = { viewModel.deleteDebt(debt.id) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0x1AFFFFFF)),
-                                    border = BorderStroke(1.dp, Color(0xFF292524)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceBlue),
+                                    border = BorderStroke(1.dp, BorderColor),
                                     shape = RoundedCornerShape(12.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                                     modifier = Modifier.height(28.dp)
@@ -6694,7 +6710,7 @@ fun AuthDialog(
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
                         focusedBorderColor = NeonGreen,
-                        unfocusedBorderColor = Color(0xFF292524)
+                        unfocusedBorderColor = BorderColor
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -6713,7 +6729,7 @@ fun AuthDialog(
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite,
                         focusedBorderColor = NeonGreen,
-                        unfocusedBorderColor = Color(0xFF292524)
+                        unfocusedBorderColor = BorderColor
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -6798,7 +6814,7 @@ fun AuthDialog(
                                 showGoogleFallbackPrompt = true
                             }
                         },
-                        border = BorderStroke(1.dp, Color(0xFF292524)),
+                        border = BorderStroke(1.dp, BorderColor),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextWhite),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
@@ -7002,8 +7018,8 @@ fun GroupTripsDashboard(
                         
                         Card(
                             shape = RoundedCornerShape(20.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                            border = BorderStroke(1.dp, BorderColor),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onTripSelect(trip.id) }
@@ -7439,12 +7455,13 @@ fun DetailedTripWorkspaceView(
         }
 
         // Inner Sub Workspace tabs: Expenses, Settle Up, Summary Report, Activity/Reminders
+        val isLight = LocalCssThemeVariables.current.isLight
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(SurfaceBlue)
+                .background(if (isLight) Color(0xFFE2E8F0) else SurfaceBlue)
                 .border(BorderStroke(1.dp, BorderColor), RoundedCornerShape(8.dp))
                 .padding(2.dp)
         ) {
@@ -7459,10 +7476,16 @@ fun DetailedTripWorkspaceView(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSelected) accent.copy(alpha = 0.15f) else Color.Transparent)
+                        .background(
+                            if (isSelected) {
+                                if (isLight) Color.White else accent.copy(alpha = 0.15f)
+                            } else Color.Transparent
+                        )
                         .border(
                             width = 1.dp,
-                            color = if (isSelected) accent.copy(alpha = 0.25f) else Color.Transparent,
+                            color = if (isSelected) {
+                                if (isLight) BorderColor else accent.copy(alpha = 0.25f)
+                            } else Color.Transparent,
                             shape = RoundedCornerShape(6.dp)
                         )
                         .clickable { trackerTab = id }
@@ -7501,7 +7524,8 @@ fun DetailedTripWorkspaceView(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                        border = BorderStroke(1.dp, BorderColor),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -7523,7 +7547,8 @@ fun DetailedTripWorkspaceView(
 
                     // Spend Category Breakdown
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                        border = BorderStroke(1.dp, BorderColor),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -7550,7 +7575,7 @@ fun DetailedTripWorkspaceView(
                                                 .fillMaxWidth()
                                                 .height(6.dp)
                                                 .clip(CircleShape)
-                                                .background(Color(0xFF222222))
+                                                .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF222222))
                                         ) {
                                             Box(
                                                 modifier = Modifier
@@ -7568,7 +7593,8 @@ fun DetailedTripWorkspaceView(
 
                     // Individual Ledger Contributions
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                        border = BorderStroke(1.dp, BorderColor),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -7644,8 +7670,8 @@ fun DetailedTripWorkspaceView(
                             val involvedNames = exp.involvedParticipants.split(",").filter { it.isNotBlank() }
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF161616))
+                                border = BorderStroke(1.dp, BorderColor),
+                                colors = CardDefaults.cardColors(containerColor = SurfaceBlue)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Row(
@@ -7730,7 +7756,8 @@ fun DetailedTripWorkspaceView(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                        border = BorderStroke(1.dp, BorderColor),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -7841,7 +7868,8 @@ fun DetailedTripWorkspaceView(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                        border = BorderStroke(1.dp, BorderColor),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
@@ -8129,8 +8157,8 @@ fun TripAddExpenseDialog(
                         onClick = {
                             receiptSimUri = "receipt_${System.currentTimeMillis()}.png"
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = if (hasAttached) NeonGreen.copy(0.15f) else Color(0xFF161616)),
-                        border = BorderStroke(1.dp, if (hasAttached) NeonGreen else Color.Transparent)
+                        colors = ButtonDefaults.buttonColors(containerColor = if (hasAttached) NeonGreen.copy(0.15f) else SurfaceBlue),
+                        border = BorderStroke(1.dp, if (hasAttached) NeonGreen else BorderColor)
                     ) {
                         Text(if (hasAttached) "🧾 Receipt attached ✔" else "➕ Simulate Upload Bill", fontSize = 11.sp, color = if (hasAttached) NeonGreen else TextWhite)
                     }
@@ -8217,8 +8245,8 @@ fun TripExporterMockupDialog(
                 // MOCK spreadsheet mockup
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161616)),
-                    border = BorderStroke(1.dp, Color.White.copy(0.05f))
+                    colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                    border = BorderStroke(1.dp, BorderColor)
                 ) {
                     Column(
                         modifier = Modifier
