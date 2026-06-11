@@ -302,6 +302,7 @@ fun BudgetListScreen(
             // Target Budgets Scrollable List view
             LazyColumn(
                 modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(budgets) { item ->

@@ -133,9 +133,9 @@ fun ExpensesWorkspaceHub(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 listOf(
-                    Pair("list", "📊 Advanced Ledger"),
-                    Pair("calendar", "📆 Calendar Chrono"),
-                    Pair("transfer", "🔄 Account Transfers")
+                    Pair("list", "📊 Ledger"),
+                    Pair("calendar", "📆 Calendar"),
+                    Pair("transfer", "🔄 Transfers")
                 ).forEach { (tabId, label) ->
                     val isSelected = expenseSubTab == tabId
                     Box(
@@ -348,7 +348,7 @@ fun ExpensesWorkspaceHub(
                             .fillMaxSize()
                             .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp)
+                        contentPadding = PaddingValues(bottom = 120.dp)
                     ) {
                         items(filteredExpenses, key = { it.id }) { expense ->
                             RedesignedTransactionItem(
@@ -1526,8 +1526,8 @@ fun AccountTransfersViewport(
 
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+            .fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Real-Time Account Balances Overview Card

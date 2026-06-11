@@ -71,7 +71,7 @@ fun ReportsWorkspacePage(
             .fillMaxSize()
             .background(NavyBg)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp)
             .testTag("reports_workspace_page")
     ) {
         // Report Page Header

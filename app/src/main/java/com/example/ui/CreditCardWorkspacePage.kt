@@ -385,6 +385,7 @@ fun CreditCardDashboardScreen(
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(cards) { cardDetails ->

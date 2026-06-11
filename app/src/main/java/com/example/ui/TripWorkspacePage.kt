@@ -82,6 +82,20 @@ fun TripWorkspaceMain(
                         tripViewModel = tripViewModel,
                         onCreateTrigger = { showCreateTripModal = true }
                     )
+
+                    if (state.trips.isNotEmpty()) {
+                        FloatingActionButton(
+                            onClick = { showCreateTripModal = true },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(bottom = 96.dp, end = 20.dp)
+                                .testTag("add_trip_fab")
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = "Add New Trip")
+                        }
+                    }
                 }
             }
         }
@@ -215,7 +229,7 @@ fun TripDashboardList(
                     .weight(1f)
                     .fillMaxWidth()
                     .testTag("trips_lazy_list"),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 items(state.trips) { trip ->
@@ -327,21 +341,6 @@ fun TripDashboardList(
                             }
                         }
                     }
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                FloatingActionButton(
-                    onClick = onCreateTrigger,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.testTag("add_trip_fab")
-                ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add New Trip")
                 }
             }
         }

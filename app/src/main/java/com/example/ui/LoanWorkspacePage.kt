@@ -161,29 +161,82 @@ fun LoanWorkspaceHub(
                 }
             }
 
-            // Tabs Selector
+            // Tabs Selector: Premium Segmented controls matching Split design with micro-animations
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.Center
+                    .padding(horizontal = 20.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                TabButton(
-                    label = "Active Loans",
-                    isSelected = activeSubTab == "loans",
-                    icon = Icons.Default.Menu,
-                    onClick = { activeSubTab = "loans" },
-                    modifier = Modifier.testTag("loan_list_tab")
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                TabButton(
-                    label = "EMI Calendar",
-                    isSelected = activeSubTab == "calendar",
-                    icon = Icons.Default.DateRange,
-                    onClick = { activeSubTab = "calendar" },
-                    modifier = Modifier.testTag("emi_calendar_tab")
-                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (activeSubTab == "loans") MaterialTheme.colorScheme.primary else Color.Transparent
+                        )
+                        .clickable { activeSubTab = "loans" }
+                        .testTag("loan_list_tab"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp),
+                            tint = if (activeSubTab == "loans") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Active Loans",
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            fontWeight = if (activeSubTab == "loans") FontWeight.Bold else FontWeight.Medium,
+                            color = if (activeSubTab == "loans") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (activeSubTab == "calendar") MaterialTheme.colorScheme.primary else Color.Transparent
+                        )
+                        .clickable { activeSubTab = "calendar" }
+                        .testTag("emi_calendar_tab"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp),
+                            tint = if (activeSubTab == "calendar") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "EMI Calendar",
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            fontWeight = if (activeSubTab == "calendar") FontWeight.Bold else FontWeight.Medium,
+                            color = if (activeSubTab == "calendar") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             // Main Contents
@@ -229,7 +282,7 @@ fun LoanWorkspaceHub(
             onClick = { showAddLoanModal = true },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp)
+                .padding(bottom = 96.dp, end = 20.dp)
                 .testTag("add_loan_fab_button"),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
@@ -347,7 +400,7 @@ fun LoansTabContent(
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(state.loans) { loan ->
@@ -730,7 +783,7 @@ fun CalendarTabContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 16.dp),
+                    .padding(start = 16.dp, end = 16.dp, bottom = 100.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(text = "No EMI dues scheduled for this day.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -741,6 +794,7 @@ fun CalendarTabContent(
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(activeDaySchedules) { sch ->

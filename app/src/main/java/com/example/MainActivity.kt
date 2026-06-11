@@ -3267,7 +3267,7 @@ fun SettingsWorkspacePage(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp)
     ) {
         // -----------------------------------------------------------------
         // BEAUTIFUL SECURITY & FIREBASE AUTHENTICATION PANEL
@@ -4722,7 +4722,7 @@ fun SipWorkspacePage(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp)
     ) {
         // Page Title & Header
         Text(
@@ -5899,7 +5899,7 @@ fun CalendarWorkspacePage(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp)
     ) {
         // HEADER TITLE
         Text(

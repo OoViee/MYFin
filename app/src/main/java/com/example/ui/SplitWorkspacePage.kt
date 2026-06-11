@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -53,124 +54,280 @@ fun SplitsWorkspaceHub(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             
-            if (localMainTab != "trips") {
-                // Header Aggregate Block
-                Box(
+            val isEditingOrViewingGroup = (uiState as? SplitUiState.Success)?.currentGroup != null
+            if (!isEditingOrViewingGroup) {
+                // REDESIGNED HEADER: Clean, spacious, premium fintech style
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                        .padding(horizontal = 20.dp, vertical = 20.dp)
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
-                    Column {
-                        Text(
-                            text = "SPLITWISE-STYLE DEBT SYSTEM",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "MYFin Peer Splits & Ledger",
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Light,
-                            fontFamily = FontFamily.Serif
-                        )
+                    Text(
+                        text = "SPLIT EXPENSES",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.6.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Track debts, settlements and shared expenses.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                // HERO BALANCE CARD & DETAILS (Only for Personal and Groups tabs)
+                if (localMainTab != "trips") {
+                    when (val state = uiState) {
+                        is SplitUiState.Success -> {
+                            val netBalance = state.netBalance
+                            val absBalance = Math.abs(netBalance)
+                            val statusColor = if (netBalance > 0.0) {
+                                Color(0xFF22C55E) // Bright modern emerald green
+                            } else if (netBalance < 0.0) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
 
-                        // Mini Aggregates Card
-                        when (val state = uiState) {
-                            is SplitUiState.Success -> {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            val isLight = com.example.LocalCssThemeVariables.current.isLight
+                            val cardBgGradient = if (isLight) {
+                                Brush.linearGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                                    )
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.06f)
+                                    )
+                                )
+                            }
+
+                            // 1. Premium Net Balance Hero Card
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 4.dp)
+                                    .border(
+                                        width = 1.dp,
+                                        brush = Brush.verticalGradient(
+                                            listOf(
+                                                statusColor.copy(alpha = 0.35f),
+                                                Color.Transparent
+                                            )
+                                        ),
+                                        shape = RoundedCornerShape(24.dp)
+                                    ),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .background(cardBgGradient)
+                                        .padding(20.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Card(
-                                        modifier = Modifier.weight(1f),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                    Text(
+                                        text = "NET BALANCE",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        letterSpacing = 1.2.sp
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    
+                                    Text(
+                                        text = currencyFormatter.format(absBalance),
+                                        fontSize = 32.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (netBalance != 0.0) statusColor else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = statusColor.copy(alpha = 0.1f),
+                                        border = BorderStroke(1.dp, statusColor.copy(alpha = 0.2f))
                                     ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(statusColor)
+                                            )
                                             Text(
-                                                text = "YOU ARE OWED",
+                                                text = when {
+                                                    netBalance > 0.0 -> "YOU ARE OWED EXPENSES"
+                                                    netBalance < 0.0 -> "YOU OWE GROUP MEMBERS"
+                                                    else -> "SETTLED & CLEARED"
+                                                },
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.secondary
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = currencyFormatter.format(state.totalLent),
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.Black,
-                                                color = Color(0xFF15803D),
-                                                fontFamily = FontFamily.Monospace
-                                            )
-                                        }
-                                    }
-
-                                    Card(
-                                        modifier = Modifier.weight(1f),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Text(
-                                                text = "YOU OWE THEM",
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.error
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = currencyFormatter.format(state.totalBorrowed),
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.Black,
-                                                color = MaterialTheme.colorScheme.error,
-                                                fontFamily = FontFamily.Monospace
+                                                color = statusColor,
+                                                letterSpacing = 0.5.sp
                                             )
                                         }
                                     }
                                 }
                             }
-                            else -> {}
+
+                            // 2. Symmetric Side-by-Side Summary Cards
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Card(
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                                    ),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.ArrowDropDown,
+                                                contentDescription = null,
+                                                tint = Color(0xFF22C55E),
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Text(
+                                                text = "YOU ARE OWED",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = currencyFormatter.format(state.totalLent),
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF22C55E)
+                                        )
+                                    }
+                                }
+
+                                Card(
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                                    ),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.KeyboardArrowUp,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Text(
+                                                text = "YOU OWE THEM",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = currencyFormatter.format(state.totalBorrowed),
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
                         }
+                        else -> {}
                     }
                 }
-            }
 
-            // Mode Selector tabs (Only if NO active group is clicked to detail)
-            val isEditingOrViewingGroup = (uiState as? SplitUiState.Success)?.currentGroup != null
-            if (!isEditingOrViewingGroup) {
+                // SEGMENTED CONTROL TABS: Equal widths, beautiful rounded design and micro-animations
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(vertical = 6.dp),
-                    horizontalArrangement = Arrangement.Center
+                        .padding(horizontal = 20.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    TabButton(
-                        label = "Personal Tracker",
-                        isSelected = localMainTab == "personal",
-                        icon = Icons.Default.Person,
-                        onClick = { localMainTab = "personal" },
-                        modifier = Modifier.testTag("personal_debts_tab")
+                    val tabsList = listOf(
+                        "personal" to Pair("Personal", Icons.Default.Person),
+                        "groups" to Pair("Groups", Icons.Default.Share),
+                        "trips" to Pair("Trips", Icons.Default.Place)
                     )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    TabButton(
-                        label = "Split Groups",
-                        isSelected = localMainTab == "groups",
-                        icon = Icons.Default.Share,
-                        onClick = { localMainTab = "groups" },
-                        modifier = Modifier.testTag("group_debts_tab")
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    TabButton(
-                        label = "Trips & Events",
-                        isSelected = localMainTab == "trips",
-                        icon = Icons.Default.Place,
-                        onClick = { localMainTab = "trips" },
-                        modifier = Modifier.testTag("trip_events_tab")
-                    )
+                    tabsList.forEach { (tabId, data) ->
+                        val (label, icon) = data
+                        val isSelected = localMainTab == tabId
+                        
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+                                )
+                                .clickable { localMainTab = tabId }
+                                .testTag(
+                                    when (tabId) {
+                                        "personal" -> "personal_debts_tab"
+                                        "groups" -> "group_debts_tab"
+                                        else -> "trip_events_tab"
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp),
+                                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -233,10 +390,11 @@ fun SplitsWorkspaceHub(
                 onClick = { showCreateGroupModal = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(24.dp)
+                    .padding(bottom = 96.dp, end = 20.dp)
                     .testTag("add_group_fab_button"),
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Create Group")
             }
@@ -256,6 +414,80 @@ fun SplitsWorkspaceHub(
 }
 
 @Composable
+fun PolishedEmptyState(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier,
+    actionButtonLabel: String? = null,
+    onActionButtonClick: (() -> Unit)? = null
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+            modifier = Modifier.size(56.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+            text = title,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = description,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            lineHeight = 17.sp,
+            modifier = Modifier.widthIn(max = 250.dp)
+        )
+        if (actionButtonLabel != null && onActionButtonClick != null) {
+            Spacer(modifier = Modifier.height(18.dp))
+            Button(
+                onClick = onActionButtonClick,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = actionButtonLabel,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun PersonalDebtTrackerScreen(
     state: SplitUiState.Success,
     currencyFormatter: NumberFormat,
@@ -264,170 +496,311 @@ fun PersonalDebtTrackerScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Balanced Core
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (state.netBalance >= 0.0) {
-                    Color(0xFF15803D).copy(alpha = 0.08f)
-                } else {
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.08f)
-                }
-            ),
-            border = BorderStroke(
-                width = 1.dp,
-                color = if (state.netBalance >= 0.0) Color(0xFF15803D).copy(alpha = 0.3f) else MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
-            )
-        ) {
+        // 1. WHO OWES YOU Section
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Column {
-                    Text(
-                        text = "AGGREGATED NET LEDGERS",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = if (state.netBalance >= 0.0) "Net Owed To You" else "Net You Owe Peers",
-                        fontSize = 13.sp,
-                        color = if (state.netBalance >= 0.0) Color(0xFF15803D) else MaterialTheme.colorScheme.error
-                    )
-                }
-                Text(
-                    text = currencyFormatter.format(Math.abs(state.netBalance)),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = if (state.netBalance >= 0.0) Color(0xFF15803D) else MaterialTheme.colorScheme.error
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF22C55E))
                 )
-            }
-        }
-
-        Row(modifier = Modifier.fillMaxSize()) {
-            // Who owes you
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(end = 6.dp)
-            ) {
                 Text(
-                    text = "WHO OWES YOU ⬇",
+                    text = "PEOPLE WHO OWE YOU",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF15803D),
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    color = Color(0xFF22C55E),
+                    letterSpacing = 1.sp
                 )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
 
-                if (state.youAreOwedList.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
+            if (state.youAreOwedList.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "No pending recoveries.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFF22C55E).copy(alpha = 0.08f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color(0xFF22C55E),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "All Settled Up",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "No pending recoveries from any group member.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(state.youAreOwedList) { peer ->
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    state.youAreOwedList.forEach { peer ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Column(modifier = Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color(0xFF22C55E).copy(alpha = 0.1f),
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = peer.memberName.take(1).uppercase(),
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF22C55E),
+                                                fontSize = 14.sp
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = peer.memberName,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = currencyFormatter.format(peer.netBalance),
-                                        color = Color(0xFF15803D),
                                         fontSize = 14.sp,
-                                        fontWeight = FontWeight.Black,
-                                        fontFamily = FontFamily.Monospace
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
+                                Text(
+                                    text = currencyFormatter.format(peer.netBalance),
+                                    color = Color(0xFF22C55E),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
                 }
             }
+        }
 
-            // Whom you owe
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(start = 6.dp)
+        // 2. WHOM YOU OWE Section
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error)
+                )
                 Text(
-                    text = "WHOM YOU OWE ⬆",
+                    text = "GROUPS & MEMBERS YOU OWE",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    letterSpacing = 1.sp
                 )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
 
-                if (state.youOweList.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f))
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
+            if (state.youOweList.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.12f)
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "No outstanding splits.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "Debt-free, awesome!",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "You do not have any outstanding splits to settle.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(state.youOweList) { peer ->
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    state.youOweList.forEach { peer ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Column(modifier = Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = peer.memberName.take(1).uppercase(),
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.error,
+                                                fontSize = 14.sp
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = peer.memberName,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = currencyFormatter.format(peer.netBalance),
-                                        color = MaterialTheme.colorScheme.error,
                                         fontSize = 14.sp,
-                                        fontWeight = FontWeight.Black,
-                                        fontFamily = FontFamily.Monospace
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Text(
+                                    text = currencyFormatter.format(peer.netBalance),
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. YOUR ACTIVE SPLIT GROUPS Summary Segment
+        if (state.groups.isNotEmpty()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "ACTIVE GROUPS SUMMARY",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    state.groups.take(3).forEach { group ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f))
+                                .clickable { splitViewModel.selectGroup(group.id) }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = when (group.groupType.lowercase()) {
+                                        "trip" -> Icons.Default.Place
+                                        "home" -> Icons.Default.Home
+                                        "sports" -> Icons.Default.Star
+                                        else -> Icons.Default.Share
+                                    },
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = group.groupName,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = group.groupType,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 }
@@ -444,57 +817,38 @@ fun GroupDashboardScreen(
     onCreateGroupTrigger: () -> Unit
 ) {
     if (state.groups.isEmpty()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = "Empty",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "No groups created yet.",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Create your first group to start tracking shared expenses, event splits, and settlements.",
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = onCreateGroupTrigger,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Create New Group")
-            }
-        }
+        PolishedEmptyState(
+            icon = Icons.Default.Share,
+            title = "No split groups yet",
+            description = "Create split groups to automatically organize group splits, travel lodgings, flat expenses, and settlements logic.",
+            actionButtonLabel = "Create New Group",
+            onActionButtonClick = onCreateGroupTrigger,
+            modifier = Modifier.fillMaxSize()
+        )
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 100.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(state.groups) { group ->
+                val typeColor = when (group.groupType.lowercase()) {
+                    "trip" -> Color(0xFF3B82F6) // Premium Blue
+                    "home" -> Color(0xFF10B981) // Emerald
+                    "sports" -> Color(0xFFF59E0B) // Bright Amber
+                    else -> Color(0xFF8B5CF6) // Royal Purple
+                }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { splitViewModel.selectGroup(group.id) }
                         .testTag("group_card_${group.id}"),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -502,71 +856,70 @@ fun GroupDashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
-                                Badge(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ) {
-                                    Text(
-                                        text = group.groupType.uppercase(),
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = group.groupName,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = group.description,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            // Net balance context
-                            Column(horizontalAlignment = Alignment.End) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Divider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Split Group Context",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = typeColor.copy(alpha = 0.12f),
+                                    modifier = Modifier.size(42.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = when (group.groupType.lowercase()) {
+                                                "trip" -> Icons.Default.Place
+                                                "home" -> Icons.Default.Home
+                                                "sports" -> Icons.Default.Star
+                                                else -> Icons.Default.Share
+                                            },
+                                            contentDescription = null,
+                                            tint = typeColor,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.width(12.dp))
+                                
+                                Column {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = typeColor.copy(alpha = 0.08f),
+                                        border = BorderStroke(1.dp, typeColor.copy(alpha = 0.2f))
+                                    ) {
+                                        Text(
+                                            text = group.groupType.uppercase(),
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = typeColor,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    
+                                    Text(
+                                        text = group.groupName,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    
+                                    if (group.description.isNotBlank()) {
+                                        Text(
+                                            text = group.description,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
                             }
-
-                            Text(
-                                text = "TAP TO WORKSPACE",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
+                            
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
