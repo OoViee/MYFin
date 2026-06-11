@@ -43,10 +43,10 @@ object FinancialLedgerEngine {
         cardOutstanding: Double,
         loanObligations: Double
     ): Double {
-        // Starting Base balances for high-fidelity interactive simulation
-        var cash = 12000.0
-        var bank = 48000.0
-        var wallet = 45000.0
+        // Starting Base balances (Real calculated; no dummy starting values)
+        var cash = 0.0
+        var bank = 0.0
+        var wallet = 0.0
 
         for (entry in ledgerEntries) {
             val amt = entry.amount

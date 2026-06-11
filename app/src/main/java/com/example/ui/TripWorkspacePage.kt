@@ -427,23 +427,50 @@ fun TripDetailWorkspace(
                 else -> 4
             },
             edgePadding = 12.dp,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            contentColor = MaterialTheme.colorScheme.primary,
+            indicator = {},
+            divider = {},
+            modifier = Modifier
+                .padding(vertical = 12.dp, horizontal = 12.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(14.dp))
+                .padding(vertical = 4.dp)
         ) {
-            Tab(selected = currentDetailSubTab == "overview", onClick = { currentDetailSubTab = "overview" }) {
-                Text("Overview", modifier = Modifier.padding(14.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-            Tab(selected = currentDetailSubTab == "expenses", onClick = { currentDetailSubTab = "expenses" }) {
-                Text("Expenses", modifier = Modifier.padding(14.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-            Tab(selected = currentDetailSubTab == "settlements", onClick = { currentDetailSubTab = "settlements" }) {
-                Text("Settlements", modifier = Modifier.padding(14.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-            Tab(selected = currentDetailSubTab == "analytics", onClick = { currentDetailSubTab = "analytics" }) {
-                Text("Analytics", modifier = Modifier.padding(14.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            }
-            Tab(selected = currentDetailSubTab == "participants", onClick = { currentDetailSubTab = "participants" }) {
-                Text("People", modifier = Modifier.padding(14.dp), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            val tabs = listOf(
+                "overview" to "Overview",
+                "expenses" to "Expenses",
+                "settlements" to "Settlements",
+                "analytics" to "Analytics",
+                "participants" to "People"
+            )
+            tabs.forEach { (route, label) ->
+                val isSelected = currentDetailSubTab == route
+                Tab(
+                    selected = isSelected,
+                    onClick = { currentDetailSubTab = route },
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                            } else Color.Transparent
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Transparent,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                ) {
+                    Text(
+                        text = label,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 

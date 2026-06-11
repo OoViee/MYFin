@@ -1457,9 +1457,9 @@ fun AccountTransfersViewport(
 
     // Compute dynamic real-time balances from standard base starters
     val (cashBal, bankBal, walletBal) = remember(ledgerEntries) {
-        var cash = 12000.0
-        var bank = 48000.0
-        var wallet = 45000.0
+        var cash = 0.0
+        var bank = 0.0
+        var wallet = 0.0
         // Apply deltas sequentially
         for (entry in ledgerEntries.sortedBy { it.timestamp }) {
             val amt = entry.amount

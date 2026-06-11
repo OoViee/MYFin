@@ -117,15 +117,55 @@ class DashboardRepository(private val repository: Repository) {
             tc.get(Calendar.YEAR) == currentYear && tc.get(Calendar.MONTH) == currentMonth
         }
 
-        // Greet calculations: sum current month income
-        val currentIncomeSum = income.sumOf { it.amount }
+        // Greet calculations: filter current month income
+        val currentMonthIncomePaydays = income.filter {
+            val tc = Calendar.getInstance().apply { timeInMillis = it.timestamp }
+            tc.get(Calendar.YEAR) == currentYear && tc.get(Calendar.MONTH) == currentMonth
+        }
+        val currentIncomeSum = currentMonthIncomePaydays.sumOf { it.amount }
 
         // Sum current month expenses: daily + credit
         val currentExpenseSum = currentMonthDaily.sumOf { it.amount } + currentMonthCredit.sumOf { it.amount }
         val currentSavings = currentIncomeSum - currentExpenseSum
 
-        val incomeTrend = if (income.isNotEmpty()) 10.0 else null
-        val expenseTrend = if (currentMonthDaily.isNotEmpty() || currentMonthCredit.isNotEmpty()) -5.0 else null
+        val calPrev = Calendar.getInstance().apply {
+            add(Calendar.MONTH, -1)
+        }
+        val prevYear = calPrev.get(Calendar.YEAR)
+        val prevMonth = calPrev.get(Calendar.MONTH)
+
+        // Previous Month daily expenses
+        val prevMonthDaily = daily.filter {
+            val tc = Calendar.getInstance().apply { timeInMillis = it.timestamp }
+            tc.get(Calendar.YEAR) == prevYear && tc.get(Calendar.MONTH) == prevMonth
+        }
+
+        // Previous Month credit expenses
+        val prevMonthCredit = credit.filter {
+            val tc = Calendar.getInstance().apply { timeInMillis = it.timestamp }
+            tc.get(Calendar.YEAR) == prevYear && tc.get(Calendar.MONTH) == prevMonth
+        }
+
+        val prevExpenseSum = prevMonthDaily.sumOf { it.amount } + prevMonthCredit.sumOf { it.amount }
+
+        // Previous Month income
+        val prevMonthIncome = income.filter {
+            val tc = Calendar.getInstance().apply { timeInMillis = it.timestamp }
+            tc.get(Calendar.YEAR) == prevYear && tc.get(Calendar.MONTH) == prevMonth
+        }
+        val prevIncomeSum = prevMonthIncome.sumOf { it.amount }
+
+        val incomeTrend = if (prevIncomeSum > 0.0) {
+            ((currentIncomeSum - prevIncomeSum) / prevIncomeSum) * 100.0
+        } else {
+            null
+        }
+
+        val expenseTrend = if (prevExpenseSum > 0.0) {
+            ((currentExpenseSum - prevExpenseSum) / prevExpenseSum) * 100.0
+        } else {
+            null
+        }
 
         // Financial Health Card: Upcoming obligations
         val obligations = mutableListOf<UpcomingObligation>()
@@ -195,7 +235,7 @@ class DashboardRepository(private val repository: Repository) {
         // Sort obligations by daysRemaining ascending
         val sortedObligations = obligations.sortedBy { it.daysRemaining }.take(3)
 
-        // Real Budgets snapshot mapping if available
+        // Real Budgets snapshot mapping if available (No mock/simulated budgets generated)
         val activeDbBudgets = budgetsList.filter { it.isActive && !it.isDeleted }
         val budgetSnapshot = if (activeDbBudgets.isNotEmpty()) {
             activeDbBudgets.map { b ->
@@ -209,32 +249,7 @@ class DashboardRepository(private val repository: Repository) {
                 )
             }.sortedByDescending { it.percentage }.take(3)
         } else {
-            val categoriesToMeasure = listOf(
-                Triple("Food", "Food & Dining", 0.70f),
-                Triple("Travel", "Transport", 0.45f),
-                Triple("Shopping", "Shopping", 0.25f)
-            )
-            categoriesToMeasure.map { (shortName, fullName, defaultPct) ->
-                val spent = when (fullName) {
-                    "Food & Dining" -> currentMonthDaily.filter { it.category == fullName }.sumOf { it.amount } +
-                            currentMonthCredit.filter { it.category == "Dining" || it.description.contains("zomato", true) || it.description.contains("swiggy", true) }.sumOf { it.amount }
-                    "Transport" -> currentMonthDaily.filter { it.category == fullName || it.category.contains("transport", true) }.sumOf { it.amount }
-                    "Shopping" -> currentMonthDaily.filter { it.category == fullName }.sumOf { it.amount } +
-                            currentMonthCredit.filter { it.category == fullName }.sumOf { it.amount }
-                    else -> 0.0
-                }
-                
-                val limit = if (spent > 0) spent / defaultPct else (10000.0 * defaultPct)
-                val finalSpent = if (spent > 0) spent else (limit * defaultPct)
-                val computedPct = if (limit > 0) (finalSpent / limit).toFloat().coerceIn(0.01f, 1.0f) else defaultPct
-                
-                BudgetCategoryLimit(
-                    category = shortName,
-                    percentage = computedPct,
-                    spent = finalSpent,
-                    limit = limit
-                )
-            }
+            emptyList()
         }
 
         // Split Expense Summary
@@ -337,7 +352,7 @@ class DashboardRepository(private val repository: Repository) {
 
         val hasCreditCards = creditCards.isNotEmpty()
         val hasLoans = loans.isNotEmpty()
-        val hasBudgets = budgetsList.isNotEmpty()
+        val hasBudgets = activeDbBudgets.isNotEmpty()
         val hasSplits = splits.isNotEmpty() || groupBalances.isNotEmpty() || totalBorrowSum > 0.0 || totalLentSum > 0.0
         val hasTrips = tripEvents.isNotEmpty()
 

@@ -95,7 +95,24 @@ fun DashboardScreen(
                         .padding(16.dp)
                 ) {
                     // SECTION 1: Greeting & Month Overview
-                    DashboardGreetingSection(isLight = isLight)
+                    val mainViewModel: WealthPulseViewModel = viewModel()
+                    val currentUser by mainViewModel.currentUser.collectAsState()
+                    val displayName = remember(currentUser) {
+                        val user = currentUser
+                        if (user == null || user.isAnonymous) {
+                            "Rakshit"
+                        } else {
+                            val email = user.email
+                            val localPart = email.substringBefore("@")
+                            localPart.split(".", "_", "-").joinToString(" ") { part ->
+                                part.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+                            }
+                        }
+                    }
+                    DashboardGreetingSection(
+                        displayName = displayName,
+                        expenseTrend = data.expenseTrend
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -259,15 +276,16 @@ fun DashboardSectionHeader(
 
 @Composable
 fun DashboardGreetingSection(
-    isLight: Boolean,
+    displayName: String,
+    expenseTrend: Double?,
     modifier: Modifier = Modifier
 ) {
     // Current time greeting logic
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greetingText = when (hour) {
-        in 0..11 -> "Good Morning, Rakshit"
-        in 12..16 -> "Good Afternoon, Rakshit"
-        else -> "Good Evening, Rakshit"
+        in 0..11 -> "Good Morning, $displayName"
+        in 12..16 -> "Good Afternoon, $displayName"
+        else -> "Good Evening, $displayName"
     }
     
     // Obtain Month label
@@ -302,12 +320,22 @@ fun DashboardGreetingSection(
                 modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
-                    .background(NeonGreen)
+                    .background(if (expenseTrend != null && expenseTrend > 0.0) DangerRed else NeonGreen)
             )
             Text(
-                text = "Spent 12% less than last month",
+                text = when {
+                    expenseTrend == null -> "Baseline established this month"
+                    expenseTrend < 0 -> "Spent ${String.format("%.1f", -expenseTrend)}% less than last month"
+                    expenseTrend > 0 -> "Spent ${String.format("%.1f", expenseTrend)}% more than last month"
+                    else -> "Spending matching last month"
+                },
                 fontSize = 11.sp,
-                color = NeonGreen,
+                color = when {
+                    expenseTrend == null -> TextGray
+                    expenseTrend < 0 -> NeonGreen
+                    expenseTrend > 0 -> DangerRed
+                    else -> TextGray
+                },
                 fontWeight = FontWeight.Medium
             )
         }

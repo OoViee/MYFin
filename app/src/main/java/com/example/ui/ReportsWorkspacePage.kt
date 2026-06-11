@@ -35,6 +35,32 @@ fun ReportsWorkspacePage(
     currencyFormatter: NumberFormat,
     modifier: Modifier = Modifier
 ) {
+    if (dailyExpenses.isEmpty() && creditExpenses.isEmpty() && incomePaydays.isEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(NavyBg)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text("📊", fontSize = 48.sp, modifier = Modifier.padding(bottom = 12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Not enough data available to generate insights yet.",
+                    color = TextGray,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        return
+    }
+
     val totalIncome = incomePaydays.sumOf { it.amount }
     val totalExpense = dailyExpenses.sumOf { it.amount } + creditExpenses.sumOf { it.amount }
     val totalSavings = totalIncome - totalExpense

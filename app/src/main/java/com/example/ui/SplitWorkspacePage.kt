@@ -916,7 +916,7 @@ fun GroupMembersTab(
                             ) {
                                 Text(
                                     text = member.memberName.take(1).uppercase(),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp
                                 )
@@ -935,7 +935,7 @@ fun GroupMembersTab(
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace,
-                                color = if (netBal >= 0.0) Color(0xFF15803D) else MaterialTheme.colorScheme.error
+                                color = if (netBal >= 0.0) com.example.NeonGreen else MaterialTheme.colorScheme.error
                             )
                             Text(
                                 text = if (netBal >= 0.0) "is owed" else "owes",

@@ -23,14 +23,20 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ui.viewmodel.WealthPulseViewModel
 
 @Composable
 fun MoreWorkspaceHub(
     onNavigate: (String) -> Unit,
     onNavigateToCategory: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: WealthPulseViewModel = viewModel()
 ) {
     var showAltNotifications by remember { mutableStateOf(false) }
+    val creditCards by viewModel.creditCards.collectAsState()
+    val emiLoans by viewModel.emiLoans.collectAsState()
+    val sipRecords by viewModel.sipRecords.collectAsState()
 
     Column(
         modifier = modifier
@@ -92,23 +98,36 @@ fun MoreWorkspaceHub(
                         )
                     }
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "• HDFC Millennia statement of ₹8,400 due in 7 days.",
-                        fontSize = 11.sp,
-                        color = TextWhite
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "• Rent of ₹12,020 due on 15th of June.",
-                        fontSize = 11.sp,
-                        color = TextWhite
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "• SIP in Nifty Mutual Funds auto-debit pending tomorrow.",
-                        fontSize = 11.sp,
-                        color = TextWhite
-                    )
+                    
+                    val alertsList = remember(creditCards, emiLoans, sipRecords) {
+                        val list = mutableListOf<String>()
+                        creditCards.forEach { cc ->
+                            if (cc.outstandingAmount > 0) {
+                                list.add("• ${cc.cardName} bill payment of ₹${Math.round(cc.outstandingAmount)} is due soon (Bill date: ${cc.billDate}th).")
+                            }
+                        }
+                        emiLoans.forEach { emi ->
+                            if (emi.remainingMonths > 0) {
+                                list.add("• Loan liability ${emi.description}: ₹${Math.round(emi.amount)} due monthly (${emi.remainingMonths} months left).")
+                            }
+                        }
+                        sipRecords.forEach { sip ->
+                            list.add("• Monthly investment SIP of ₹${Math.round(sip.amount)} for ${sip.description} scheduled on ${sip.dayOfMonth}th.")
+                        }
+                        if (list.isEmpty()) {
+                            list.add("• Vault pristine: All credit card outstanding bills, loans, and investment pipelines are fully settled and clear! No alerts.")
+                        }
+                        list
+                    }
+
+                    alertsList.forEach { alert ->
+                        Text(
+                            text = alert,
+                            fontSize = 11.sp,
+                            color = TextWhite
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                 }
             }
         }

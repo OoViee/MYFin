@@ -7,6 +7,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -167,49 +173,132 @@ class MainActivity : ComponentActivity() {
             val isFirstLaunchPref = remember { context.getSharedPreferences("myfin_launch_prefs", android.content.Context.MODE_PRIVATE) }
             var isFirstLaunch by remember { mutableStateOf(isFirstLaunchPref.getBoolean("is_first_launch", true)) }
             var showTempEmailAuthOnboarding by remember { mutableStateOf(false) }
+            var showSplash by remember { mutableStateOf(true) }
 
             val showMigrationDialog by viewModel.showMigrationDialog.collectAsState()
 
             WealthPulseTheme(variables = themeVariables) {
-                Scaffold(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .testTag("main_scaffold"),
-                    contentWindowInsets = WindowInsets.safeDrawing
-                ) { innerPadding ->
-                    FinancialWorkspaceScreen(
+                if (showSplash) {
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding),
-                        viewModel = viewModel
-                    )
+                            .background(themeVariables.bg)
+                            .testTag("premium_splash_overlay"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val logoScale = remember { Animatable(0.4f) }
+                        val logoAlpha = remember { Animatable(0.0f) }
 
-                    if (isFirstLaunch) {
-                        OnboardingDialog(
-                            onDismissOnboarding = {
-                                isFirstLaunch = false
-                                isFirstLaunchPref.edit().putBoolean("is_first_launch", false).apply()
-                            },
-                            viewModel = viewModel,
-                            onShowEmailAuth = {
-                                showTempEmailAuthOnboarding = true
+                        LaunchedEffect(Unit) {
+                            launch {
+                                logoScale.animateTo(
+                                    targetValue = 1.0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                )
                             }
-                        )
-                    }
+                            logoAlpha.animateTo(
+                                targetValue = 1.0f,
+                                animationSpec = tween(durationMillis = 500)
+                            )
+                            kotlinx.coroutines.delay(800)
+                            logoAlpha.animateTo(
+                                targetValue = 0.0f,
+                                animationSpec = tween(durationMillis = 350)
+                            )
+                            showSplash = false
+                        }
 
-                    if (showTempEmailAuthOnboarding) {
-                        AuthDialog(
-                            onDismiss = {
-                                showTempEmailAuthOnboarding = false
-                                isFirstLaunch = false
-                                isFirstLaunchPref.edit().putBoolean("is_first_launch", false).apply()
-                            },
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = logoScale.value
+                                scaleY = logoScale.value
+                                alpha = logoAlpha.value
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .clip(RoundedCornerShape(32.dp))
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(themeVariables.primary, themeVariables.credit)
+                                        )
+                                    )
+                                    .border(width = 1.5.dp, color = Color.White.copy(alpha = 0.35f), shape = RoundedCornerShape(32.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "M",
+                                    fontSize = 48.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontFamily = FontFamily.Serif
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = "M Y F i n",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Light,
+                                fontFamily = FontFamily.Serif,
+                                color = Color.White,
+                                letterSpacing = 6.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "PREMIUM FINANCE INTELLIGENCE",
+                                fontSize = 11.sp,
+                                color = themeVariables.textGray,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            )
+                        }
+                    }
+                } else {
+                    Scaffold(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag("main_scaffold"),
+                        contentWindowInsets = WindowInsets.safeDrawing
+                    ) { innerPadding ->
+                        FinancialWorkspaceScreen(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding),
                             viewModel = viewModel
                         )
-                    }
 
-                    if (showMigrationDialog) {
-                        MigrationDialog(viewModel = viewModel)
+                        if (isFirstLaunch) {
+                            OnboardingDialog(
+                                onDismissOnboarding = {
+                                    isFirstLaunch = false
+                                    isFirstLaunchPref.edit().putBoolean("is_first_launch", false).apply()
+                                },
+                                viewModel = viewModel,
+                                onShowEmailAuth = {
+                                    showTempEmailAuthOnboarding = true
+                                }
+                            )
+                        }
+
+                        if (showTempEmailAuthOnboarding) {
+                            AuthDialog(
+                                onDismiss = {
+                                    showTempEmailAuthOnboarding = false
+                                    isFirstLaunch = false
+                                    isFirstLaunchPref.edit().putBoolean("is_first_launch", false).apply()
+                                },
+                                viewModel = viewModel
+                            )
+                        }
+
+                        if (showMigrationDialog) {
+                            MigrationDialog(viewModel = viewModel)
+                        }
                     }
                 }
             }
@@ -373,13 +462,22 @@ fun FinancialWorkspaceScreen(
                         .fillMaxSize()
                         .padding(bottom = innerScaffoldPadding.calculateBottomPadding())
                 ) {
-                    if (activeNavigationMenuTab == "home") {
-                        DashboardScreen(
-                            onNavigateToTab = { tab -> activeNavigationMenuTab = tab },
-                            onTriggerQuickAction = { type -> activeManualDialog = type },
-                            currencyFormatter = currencyFormatter
-                        )
-                        if (false) {
+                    AnimatedContent(
+                        targetState = activeNavigationMenuTab,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(220)) togetherWith
+                            fadeOut(animationSpec = tween(220))
+                        },
+                        label = "navigation_page_transition",
+                        modifier = Modifier.fillMaxSize()
+                    ) { targetTab ->
+                        if (targetTab == "home") {
+                            DashboardScreen(
+                                onNavigateToTab = { tab -> activeNavigationMenuTab = tab },
+                                onTriggerQuickAction = { type -> activeManualDialog = type },
+                                currencyFormatter = currencyFormatter
+                            )
+                            if (false) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -1193,25 +1291,25 @@ fun FinancialWorkspaceScreen(
                             Spacer(modifier = Modifier.height(100.dp))
                         } // CLOSES home page column
                         } // CLOSES if (false) wrapping old home screen
-                    } else if (activeNavigationMenuTab == "expenses") {
+                    } else if (targetTab == "expenses") {
                         com.example.ui.ExpensesWorkspaceHub(
                             dailyExpenses = dailyExpenses,
                             currencyFormatter = currencyFormatter,
                             viewModel = viewModel
                         )
-                    } else if (activeNavigationMenuTab == "reports") {
+                    } else if (targetTab == "reports") {
                         ReportsWorkspacePage(
                             dailyExpenses = dailyExpenses,
                             creditExpenses = creditExpenses,
                             incomePaydays = incomePaydays,
                             currencyFormatter = currencyFormatter
                         )
-                    } else if (activeNavigationMenuTab == "more") {
+                    } else if (targetTab == "more") {
                         MoreWorkspaceHub(
                             onNavigate = { tab -> activeNavigationMenuTab = tab },
                             onNavigateToCategory = { cat -> currentCategoryPage = cat }
                         )
-                    } else if (activeNavigationMenuTab == "calendar") {
+                    } else if (targetTab == "calendar") {
                         CalendarWorkspacePage(
                             dailyExpenses = dailyExpenses,
                             creditExpenses = creditExpenses,
@@ -1221,11 +1319,11 @@ fun FinancialWorkspaceScreen(
                             currencyFormatter = currencyFormatter,
                             viewModel = viewModel
                         )
-                    } else if (activeNavigationMenuTab == "emi") {
+                    } else if (targetTab == "emi") {
                         com.example.ui.LoanWorkspaceHub(
                             currencyFormatter = currencyFormatter
                         )
-                    } else if (activeNavigationMenuTab == "sip") {
+                    } else if (targetTab == "sip") {
                         SipWorkspacePage(
                             sipRecords = sipRecords,
                             totalSip = totalSip,
@@ -1233,11 +1331,11 @@ fun FinancialWorkspaceScreen(
                             viewModel = viewModel,
                             onTriggerManual = { type -> activeManualDialog = type }
                         )
-                    } else if (activeNavigationMenuTab == "credit") {
+                    } else if (targetTab == "credit") {
                         com.example.ui.CreditCardWorkspaceHub(
                             currencyFormatter = currencyFormatter
                         )
-                    } else if (activeNavigationMenuTab == "lent") {
+                    } else if (targetTab == "lent") {
                         SplitsWorkspacePage(
                             debtSplits = debtSplits,
                             totalDebt = totalDebt,
@@ -1248,14 +1346,15 @@ fun FinancialWorkspaceScreen(
                             allParticipants = dbParticipants,
                             onTriggerManual = { type -> activeManualDialog = type }
                         )
-                    } else if (activeNavigationMenuTab == "settings") {
+                    } else if (targetTab == "settings") {
                         SettingsWorkspacePage(
                             viewModel = viewModel
                         )
-                    } else if (activeNavigationMenuTab == "budgets") {
+                    } else if (targetTab == "budgets") {
                         com.example.ui.BudgetWorkspaceHub(
                             currencyFormatter = currencyFormatter
                         )
+                    }
                     }
 
                     // BEAUTIFUL FLOATING GLASS ISLAND NAVIGATION TAB WITHOUT CLIPPING & HIGH-FIDELITY GLASSMOPHISM
@@ -1317,9 +1416,21 @@ fun FinancialWorkspaceScreen(
                                         .testTag("nav_item_$route"),
                                     contentAlignment = Alignment.Center
                                 ) {
+                                    val sizeScale by animateFloatAsState(
+                                        targetValue = if (isSelected) 1.15f else 1.0f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessLow
+                                        ),
+                                        label = "nav_item_scale"
+                                    )
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
+                                        verticalArrangement = Arrangement.Center,
+                                        modifier = Modifier.graphicsLayer {
+                                            scaleX = sizeScale
+                                            scaleY = sizeScale
+                                        }
                                     ) {
                                         Icon(
                                             imageVector = icon,
@@ -4070,7 +4181,7 @@ fun EmiWorkspacePage(
                         Text(
                             text = if (showForm) "Close Form" else "+ Add EMI",
                             fontSize = 11.sp,
-                            color = if (showForm) TextWhite else Color.Black,
+                            color = if (showForm) TextWhite else NavyBg,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -4266,7 +4377,7 @@ fun EmiWorkspacePage(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Register Active EMI Schedule 📅", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Register Active EMI Schedule 📅", color = NavyBg, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -4679,7 +4790,7 @@ fun SipWorkspacePage(
                         Text(
                             text = if (showForm) "Close Form" else "+ Add SIP",
                             fontSize = 11.sp,
-                            color = if (showForm) TextWhite else Color.Black,
+                            color = if (showForm) TextWhite else NavyBg,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -4766,12 +4877,12 @@ fun SipWorkspacePage(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) Color(0xFF3B82F6) else (if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF1E1E1F)))
-                                    .border(BorderStroke(1.dp, if (isSelected) Color(0xFF3B82F6) else BorderColor), RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) SipBlue else SurfaceBlue)
+                                    .border(BorderStroke(1.dp, if (isSelected) SipBlue else BorderColor), RoundedCornerShape(8.dp))
                                     .clickable { sipDayStr = seedDay }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
-                                Text(text = "${seedDay}th", fontSize = 11.sp, color = if (isSelected) Color.Black else TextWhite, fontWeight = FontWeight.Bold)
+                                Text(text = "${seedDay}th", fontSize = 11.sp, color = TextWhite, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -7300,7 +7411,7 @@ fun DetailedTripWorkspaceView(
                                 colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("📄 Export Printable Trip Summary (PDF/Excel)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("📄 Export Printable Trip Summary (PDF/Excel)", color = NavyBg, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                         }
                     }
@@ -7592,7 +7703,7 @@ fun DetailedTripWorkspaceView(
                                             modifier = Modifier.height(28.dp),
                                             shape = RoundedCornerShape(8.dp)
                                         ) {
-                                            Text("Mark Settled", fontSize = 9.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                                            Text("Mark Settled", fontSize = 9.sp, color = NavyBg, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -8042,7 +8153,7 @@ fun TripExporterMockupDialog(
                     onClick = onDismiss,
                     colors = ButtonDefaults.buttonColors(containerColor = NeonGreen)
                 ) {
-                    Text("Download Summary Report", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Download Summary Report", color = NavyBg, fontWeight = FontWeight.Bold)
                 }
             }
         }

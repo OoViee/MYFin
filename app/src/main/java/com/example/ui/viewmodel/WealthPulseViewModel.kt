@@ -770,43 +770,6 @@ class WealthPulseViewModel(application: Application) : AndroidViewModel(applicat
     fun seedSampleDatabase() {
         viewModelScope.launch {
             clearAllDatabaseInternal()
-            val uid = currentUserId.value
-
-            // 1. Daily Expenses
-            repository.insertDailyExpense(DailyExpenseEntity(amount = 250.0, currency = "INR", description = "Zomato Gourmet Dinner", category = "Food & Dining", paymentMode = "UPI", userId = uid))
-            repository.insertDailyExpense(DailyExpenseEntity(amount = 120.0, currency = "INR", description = "Uber Taxi to Corporate Office", category = "Transport", paymentMode = "UPI", userId = uid))
-            repository.insertDailyExpense(DailyExpenseEntity(amount = 800.0, currency = "INR", description = "Monthly Electricity Bill", category = "Utilities", paymentMode = "Debit Card", userId = uid))
-            repository.insertDailyExpense(DailyExpenseEntity(amount = 1200.0, currency = "INR", description = "Sujata Organic Groceries", category = "Groceries", paymentMode = "Cash", userId = uid))
-
-            // 2. Credit Expenses
-            repository.insertCreditExpense(CreditExpenseEntity(amount = 3500.0, currency = "INR", description = "Zara Designer Jacket", category = "Shopping", cardName = "HDFC Millennia", isEmiConversion = false, userId = uid))
-            repository.insertCreditExpense(CreditExpenseEntity(amount = 1200.0, currency = "INR", description = "PVR IMAX Movie Ticket", category = "Entertainment", cardName = "ICICI Amazon", isEmiConversion = false, userId = uid))
-            repository.insertCreditExpense(CreditExpenseEntity(amount = 25000.0, currency = "INR", description = "Apple iPad Mini", category = "Electronics", cardName = "Axis Magnus", isEmiConversion = true, userId = uid))
-
-            // 3. EMIs
-            repository.insertEmiLoan(EmiLoanEntity(amount = 8000.0, currency = "INR", description = "HDFC Car Loan Liability", category = "Loan", totalTenureMonths = 36, remainingMonths = 24, userId = uid))
-            repository.insertEmiLoan(EmiLoanEntity(amount = 3200.0, currency = "INR", description = "Samsung TV No-Cost EMI", category = "Electronics", totalTenureMonths = 6, remainingMonths = 3, userId = uid))
-
-            // 4. Splits
-            repository.insertDebtSplit(DebtSplitEntity(amount = 450.0, currency = "INR", description = "Friday Office Meal Split", category = "Peer Split", paymentMode = "UPI", debtPersonInvolved = "Amit", isGroupSplit = true, groupName = "Office Lunch", userId = uid))
-            repository.insertDebtSplit(DebtSplitEntity(amount = 1500.0, currency = "INR", description = "Goa Villa booking share", category = "Peer Split", paymentMode = "UPI", debtPersonInvolved = "Neha", isGroupSplit = true, groupName = "Goa Trip 2026", userId = uid))
-
-            // 5. Income Paydays
-            repository.insertIncomePayday(IncomePaydayEntity(amount = 75000.0, currency = "INR", description = "Intellect Corp Monthly Salary", category = "Salary", incomeFrequency = "Monthly", paymentMode = "Bank Transfer", userId = uid))
-            repository.insertIncomePayday(IncomePaydayEntity(amount = 12000.0, currency = "INR", description = "Web Design Consulting Bonus", category = "Freelance", incomeFrequency = "One-off", paymentMode = "UPI", userId = uid))
-
-            // 6. SIPs
-            repository.insertSipRecord(SipEntity(amount = 5000.0, currency = "INR", description = "Nippon India Growth SIP", frequency = "Monthly", investmentCategory = "Mutual Funds", dayOfMonth = 5, userId = uid))
-            repository.insertSipRecord(SipEntity(amount = 3000.0, currency = "INR", description = "Parag Parikh Flexi Cap SIP", frequency = "Monthly", investmentCategory = "Mutual Funds", dayOfMonth = 10, userId = uid))
-
-            // 7. Investments
-            repository.insertInvestmentRecord(InvestmentEntity(amount = 40000.0, currency = "INR", description = "INFY Stock Equity portfolio", category = "Equity", currentValue = 46500.0, userId = uid))
-            repository.insertInvestmentRecord(InvestmentEntity(amount = 15000.0, currency = "INR", description = "SGB Sovereign Gold Bond", category = "Gold", currentValue = 18200.0, userId = uid))
-
-            // 8. Credit Cards
-            repository.insertCreditCard(CreditCardEntity(cardName = "HDFC Millennia", creditLimit = 150000.0, billDate = 15, billStatus = "Pending", outstandingAmount = 3500.0, userId = uid))
-            repository.insertCreditCard(CreditCardEntity(cardName = "ICICI Amazon", creditLimit = 250000.0, billDate = 20, billStatus = "Pending", outstandingAmount = 1200.0, userId = uid))
-            repository.insertCreditCard(CreditCardEntity(cardName = "Axis Magnus", creditLimit = 500000.0, billDate = 10, billStatus = "Pending", outstandingAmount = 25000.0, userId = uid))
         }
     }
 
