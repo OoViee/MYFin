@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.viewmodel.WealthPulseViewModel
+import com.example.ui.theme.*
+import com.example.ui.components.*
 
 @Composable
 fun MoreWorkspaceHub(
@@ -67,15 +69,12 @@ fun MoreWorkspaceHub(
 
         // Notification toggle statement card
         if (showAltNotifications) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, BorderColor),
-                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+            AppCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -133,14 +132,7 @@ fun MoreWorkspaceHub(
         }
 
         // Feature grids
-        Text(
-            text = "▪ Management Spaces",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextGray,
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(bottom = 10.dp)
-        )
+        AppSectionHeader(title = "Management Spaces")
 
         val items = listOf(
             Triple("Credit Cards", Icons.Default.Send, "credit"),
@@ -207,19 +199,14 @@ fun MoreHubGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, BorderColor),
-        colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+    AppCard(
+        onClick = onClick,
         modifier = modifier
-            .height(96.dp)
-            .clickable { onClick() }
+            .height(110.dp)
             .testTag("more_hub_${title.lowercase().replace(" ", "_")}")
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.Start
         ) {

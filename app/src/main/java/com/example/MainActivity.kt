@@ -6,6 +6,7 @@ import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.example.ui.theme.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.Animatable
@@ -49,58 +50,6 @@ import com.example.ui.viewmodel.AiCoreState
 import com.example.ui.viewmodel.WealthPulseViewModel
 import java.text.NumberFormat
 import java.util.Locale
-
-// "Sophisticated Dark" Design System Color Definitions via CSS Variables mapping
-data class CssThemeVariables(
-    val bg: Color = Color(0xFF0C0A09),           // --bg: #0c0a09 (Deep elegant charcoal stone)
-    val surface: Color = Color(0xFF161616),      // --surface: #161616 (Textured dark stone surface)
-    val primary: Color = Color(0xFF10B981),      // --primary: #10b981 (Signature Emerald Green highlight)
-    val secondary: Color = Color(0xFF78716C),    // --secondary: #78716c (Secondary muted grey)
-    val accent: Color = Color(0xFFF59E0B),       // --accent: #f59e0b (Amber Gold for alerts)
-    val danger: Color = Color(0xFFEF4444),       // --danger: #ef4444 (Crimson warning color)
-    val textGray: Color = Color(0xFFA8A29E),     // --text-gray: #a8a29e (Info secondary text Stone 400)
-    val textWhite: Color = Color(0xFFF5F5F4),    // --text-white: #f5f5f4 (Title primary text Stone 100)
-    val border: Color = Color(0xFF292524),       // --border: #292524 (Subtle border)
-    val credit: Color = Color(0xFF8B5CF6),       // --credit: credit swipe cards theme accent
-    val sip: Color = Color(0xFF3B82F6),          // --sip: sip wealth accent
-    val isLight: Boolean = false
-) {
-    fun get(name: String): Color {
-        return when (name) {
-            "--bg" -> bg
-            "--surface" -> surface
-            "--primary" -> primary
-            "--secondary" -> secondary
-            "--accent" -> accent
-            "--danger" -> danger
-            "--text-gray" -> textGray
-            "--text-white" -> textWhite
-            "--border" -> border
-            "--credit" -> credit
-            "--sip" -> sip
-            else -> Color.Unspecified
-        }
-    }
-}
-
-val LocalCssThemeVariables = staticCompositionLocalOf { CssThemeVariables() }
-
-@Composable
-fun cssVar(name: String): Color {
-    return LocalCssThemeVariables.current.get(name)
-}
-
-val NavyBg: Color @Composable get() = cssVar("--bg")
-val SurfaceBlue: Color @Composable get() = cssVar("--surface")
-val NeonGreen: Color @Composable get() = cssVar("--primary")
-val DeepPurple: Color @Composable get() = cssVar("--secondary")
-val AccentOrange: Color @Composable get() = cssVar("--accent")
-val DangerRed: Color @Composable get() = cssVar("--danger")
-val TextGray: Color @Composable get() = cssVar("--text-gray")
-val TextWhite: Color @Composable get() = cssVar("--text-white")
-val BorderColor: Color @Composable get() = cssVar("--border")
-val CreditPurple: Color @Composable get() = cssVar("--credit")
-val SipBlue: Color @Composable get() = cssVar("--sip")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -306,40 +255,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun WealthPulseTheme(
-    variables: CssThemeVariables = CssThemeVariables(),
-    content: @Composable () -> Unit
-) {
-    CompositionLocalProvider(LocalCssThemeVariables provides variables) {
-        val scheme = if (variables.isLight) {
-            lightColorScheme(
-                background = cssVar("--bg"),
-                surface = cssVar("--surface"),
-                primary = cssVar("--primary"),
-                secondary = cssVar("--secondary"),
-                tertiary = cssVar("--accent"),
-                onBackground = cssVar("--text-white"),
-                onSurface = cssVar("--text-white")
-            )
-        } else {
-            darkColorScheme(
-                background = cssVar("--bg"),
-                surface = cssVar("--surface"),
-                primary = cssVar("--primary"),
-                secondary = cssVar("--secondary"),
-                tertiary = cssVar("--accent"),
-                onBackground = cssVar("--text-white"),
-                onSurface = cssVar("--text-white")
-            )
-        }
-        MaterialTheme(
-            colorScheme = scheme,
-            content = content
-        )
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FinancialWorkspaceScreen(
@@ -454,23 +369,30 @@ fun FinancialWorkspaceScreen(
                 onBack = { currentCategoryPage = null }
             )
         } else {
-            Scaffold(
-                containerColor = NavyBg
-            ) { innerScaffoldPadding ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = innerScaffoldPadding.calculateBottomPadding())
-                ) {
-                    AnimatedContent(
-                        targetState = activeNavigationMenuTab,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(220)) togetherWith
-                            fadeOut(animationSpec = tween(220))
-                        },
-                        label = "navigation_page_transition",
-                        modifier = Modifier.fillMaxSize()
-                    ) { targetTab ->
+            com.example.navigation.AppNavGraph(
+                viewModel = viewModel,
+                currencyFormatter = currencyFormatter,
+                onTriggerManualDialog = { type -> activeManualDialog = type }
+            )
+            
+            if (false) {
+                Scaffold(
+                    containerColor = NavyBg
+                ) { innerScaffoldPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = innerScaffoldPadding.calculateBottomPadding())
+                    ) {
+                        AnimatedContent(
+                            targetState = activeNavigationMenuTab,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(220)) togetherWith
+                                fadeOut(animationSpec = tween(220))
+                            },
+                            label = "navigation_page_transition",
+                            modifier = Modifier.fillMaxSize()
+                        ) { targetTab ->
                         if (targetTab == "home") {
                             DashboardScreen(
                                 onNavigateToTab = { tab -> activeNavigationMenuTab = tab },
@@ -1453,7 +1375,8 @@ fun FinancialWorkspaceScreen(
                     }
                 }
             }
-        } // CLOSES THE conditional "else" block
+        } // end of if (false) scaffold
+    } // CLOSES THE conditional "else" block
 
         // VOICE SIMULATOR PROFILE MODAL
         if (showQuickSimMicSheet) {

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.*
+import com.example.ui.theme.*
 import com.example.ui.viewmodel.SplitUiState
 import com.example.ui.viewmodel.SplitViewModel
 import java.text.NumberFormat
@@ -92,7 +93,7 @@ fun SplitsWorkspaceHub(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             }
 
-                            val isLight = com.example.LocalCssThemeVariables.current.isLight
+                            val isLight = LocalCssThemeVariables.current.isLight
                             val cardBgGradient = if (isLight) {
                                 Brush.linearGradient(
                                     listOf(
@@ -1237,7 +1238,7 @@ fun GroupMembersTab(
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(state.currentMembers) { member ->
@@ -1288,7 +1289,7 @@ fun GroupMembersTab(
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace,
-                                color = if (netBal >= 0.0) com.example.NeonGreen else MaterialTheme.colorScheme.error
+                                color = if (netBal >= 0.0) NeonGreen else MaterialTheme.colorScheme.error
                             )
                             Text(
                                 text = if (netBal >= 0.0) "is owed" else "owes",
@@ -1316,7 +1317,7 @@ fun GroupExpensesTab(
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(state.currentExpenses) { expense ->
@@ -1405,7 +1406,7 @@ fun GroupSettlementsTab(
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(state.currentSettlements) { set ->

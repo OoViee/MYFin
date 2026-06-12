@@ -27,6 +27,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.*
 import com.example.data.*
+import com.example.ui.theme.*
 import com.example.ui.viewmodel.BudgetUiState
 import com.example.ui.viewmodel.BudgetViewModel
 import java.text.NumberFormat
