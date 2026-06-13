@@ -37,6 +37,7 @@ import com.example.ui.components.AppFAB
 import com.example.ui.components.AppTopBar
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.WealthPulseViewModel
+import com.example.ui.motion.tactileListItem
 import java.text.NumberFormat
 
 @Composable
@@ -47,6 +48,7 @@ fun BottomNavContainer(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController()
 ) {
+    val isReducedMotion = com.example.ui.motion.LocalReducedMotion.current
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
@@ -130,15 +132,23 @@ fun BottomNavContainer(
                                              (dest.route == NavigationDestinations.SPLIT_ROUTE && currentRoute == NavigationDestinations.SPLIT_DASHBOARD) ||
                                              (dest.route == NavigationDestinations.PROFILE_ROUTE && currentRoute == NavigationDestinations.SETTINGS)
  
-                            val tintColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            val bgAlpha = if (isSelected) 0.08f else 0.0f
+                            val tintColor by animateColorAsState(
+                                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                animationSpec = tween(durationMillis = 150),
+                                label = "nav_tint"
+                            )
+                            val activeBg by animateColorAsState(
+                                targetValue = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent,
+                                animationSpec = tween(durationMillis = 150),
+                                label = "nav_bg"
+                            )
  
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = bgAlpha) else Color.Transparent)
-                                    .clickable {
+                                    .background(activeBg)
+                                    .tactileListItem {
                                         navController.navigateToBottomBarRoute(dest.route)
                                     }
                                     .padding(vertical = 10.dp)
@@ -182,10 +192,10 @@ fun BottomNavContainer(
         NavHost(
             navController = navController,
             startDestination = NavigationDestinations.HOME_ROUTE,
-            enterTransition = { fadeIn(animationSpec = tween(250)) + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(250)) },
-            exitTransition = { fadeOut(animationSpec = tween(250)) + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(250)) },
-            popEnterTransition = { fadeIn(animationSpec = tween(250)) + slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(250)) },
-            popExitTransition = { fadeOut(animationSpec = tween(250)) + slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(250)) },
+            enterTransition = { com.example.ui.motion.PageTransitions.enterpriseEnter(isReducedMotion) },
+            exitTransition = { com.example.ui.motion.PageTransitions.enterpriseExit(isReducedMotion) },
+            popEnterTransition = { com.example.ui.motion.PageTransitions.enterprisePopEnter(isReducedMotion) },
+            popExitTransition = { com.example.ui.motion.PageTransitions.enterprisePopExit(isReducedMotion) },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = innerPadding.calculateBottomPadding()),

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
+import com.example.ui.motion.tactileListItem
 
 @Composable
 fun AppListItem(
@@ -32,7 +33,7 @@ fun AppListItem(
     onClick: (() -> Unit)? = null
 ) {
     val rowModifier = if (onClick != null) {
-        modifier.clickable(onClick = onClick)
+        modifier.tactileListItem(onClick = onClick)
     } else {
         modifier
     }

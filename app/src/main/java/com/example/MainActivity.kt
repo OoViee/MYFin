@@ -3190,787 +3190,766 @@ fun SettingsWorkspacePage(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 100.dp)
+            .padding(start = 16.dp, top = 20.dp, end = 16.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // -----------------------------------------------------------------
-        // BEAUTIFUL SECURITY & FIREBASE AUTHENTICATION PANEL
-        // -----------------------------------------------------------------
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, if (currentUser != null) NeonGreen.copy(alpha = 0.5f) else BorderColor),
-            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-                .testTag("auth_account_security_card")
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "FIREBASE SERVICE AUTHENTICATION",
-                            fontSize = 11.sp,
-                            color = if (currentUser != null) NeonGreen else TextGray,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (currentUser != null) "Session Active (Database Partitioned)" 
-                                   else "Unsigned Guest Mode (Local Sandbox Database)",
-                            fontSize = 14.sp,
-                            color = TextWhite,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    
-                    // Status Badge Indicator
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (currentUser != null) NeonGreen.copy(alpha = 0.15f) else Color(0x3378716C))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = if (currentUser != null) "VERIFIED" else "SANDBOX",
-                            fontSize = 10.sp,
-                            color = if (currentUser != null) NeonGreen else TextGray,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+        // --- PAGE HEADER ---
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "APP CONFIGURATION & PREFERENCES",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = NeonGreen,
+                letterSpacing = 1.5.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Control Center",
+                fontSize = 28.sp,
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Light,
+                color = TextWhite,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Configure default base rates, regional presets, layout themes, and shared multi-party ledgers.",
+                fontSize = 12.sp,
+                color = TextGray,
+                lineHeight = 16.sp
+            )
+        }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = BorderColor)
-                Spacer(modifier = Modifier.height(12.dp))
-
-                if (currentUser != null) {
-                    // Signed User info
+        // --- ACCOUNT & GENERAL SECURITY ---
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "SECURE IDENTITY",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextGray,
+                letterSpacing = 1.sp
+            )
+            
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, if (currentUser != null) NeonGreen.copy(alpha = 0.3f) else BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("auth_account_security_card")
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // High-fidelity User Avatar
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(if (currentUser != null) NeonGreen.copy(alpha = 0.15f) else BorderColor),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (currentUser != null) currentUser!!.email.take(1).uppercase() else "G",
+                                    color = if (currentUser != null) NeonGreen else TextGray,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = if (currentUser != null) currentUser!!.email else "Offline Sandbox Profile",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextWhite,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.widthIn(max = 185.dp)
+                                )
+                                Text(
+                                    text = if (currentUser != null) "Verified Sync Workspace Session" else "Local Database (Unregistered)",
+                                    fontSize = 11.sp,
+                                    color = TextGray
+                                )
+                            }
+                        }
+                        
+                        // Neat Status Chip
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(NeonGreen.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (currentUser != null) NeonGreen.copy(alpha = 0.12f) else Color(0x1F78716C))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = "Active user ID icon",
-                                tint = NeonGreen,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Registered Email Address:",
-                                fontSize = 11.sp,
-                                color = TextGray
-                            )
-                            Text(
-                                text = currentUser!!.email,
-                                fontSize = 13.sp,
-                                color = TextWhite,
+                                text = if (currentUser != null) "SECURED" else "SANDBOX",
+                                fontSize = 9.sp,
+                                color = if (currentUser != null) NeonGreen else TextGray,
                                 fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                letterSpacing = 0.5.sp
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = "Partition ID: $currentUserId",
-                        fontSize = 10.sp,
-                        color = Color(0xFF78716C),
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.padding(start = 46.dp)
-                    )
-
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = BorderColor)
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
-                        onClick = {
-                            viewModel.signOutUser {
-                                Toast.makeText(context, "Signed out safely! Back to Local Sandbox.", Toast.LENGTH_SHORT).show()
+                    if (currentUser != null) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Linked Device Uid:", fontSize = 11.sp, color = TextGray)
+                                Text(
+                                    text = currentUserId.take(16) + "...",
+                                    fontSize = 11.sp,
+                                    color = TextWhite,
+                                    fontFamily = FontFamily.Monospace
+                                )
                             }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF292524)),
-                        border = BorderStroke(1.dp, BorderColor),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                            .testTag("auth_logout_button")
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(imageVector = Icons.Default.ExitToApp, contentDescription = "Log Out Icon", tint = TextWhite, modifier = Modifier.size(16.dp))
-                            Text("SECURELY SIGN OUT", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    viewModel.signOutUser {
+                                        Toast.makeText(context, "Signed out safely! Local sandbox mode active.", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = if (LocalCssThemeVariables.current.isLight) Color(0xFFE2E8F0) else Color(0xFF292524)),
+                                border = BorderStroke(1.dp, BorderColor),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .testTag("auth_logout_button")
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ExitToApp,
+                                        contentDescription = "Log Out Icon",
+                                        tint = DangerRed,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text("SECURELY DISCONNECT SESSION", fontSize = 11.sp, color = DangerRed, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
-                    }
-                } else {
-                    // Guest user promotion CTA
-                    Text(
-                        text = "Your financial worksheets are currently local. Setup an encrypted account to backup expenses, loans, splits, and payday calendars securely across any session.",
-                        fontSize = 12.sp,
-                        color = TextGray,
-                        lineHeight = 16.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = { showAuthDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .testTag("auth_trigger_login_modal")
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(imageVector = Icons.Default.Person, contentDescription = "Security login key icon", tint = NavyBg, modifier = Modifier.size(16.dp))
-                            Text("SECURELY LOCK & PERSIST MY DATA", fontSize = 12.sp, color = NavyBg, fontWeight = FontWeight.Bold)
+                    } else {
+                        Column {
+                            Text(
+                                text = "Your personal registers and ledger worksheets are stored only locally. Link a secure authenticated account to auto-backup data seamlessly.",
+                                fontSize = 11.sp,
+                                color = TextGray,
+                                lineHeight = 15.sp
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Button(
+                                onClick = { showAuthDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .testTag("auth_trigger_login_modal")
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = "Secure login key icon",
+                                        tint = NavyBg,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text("LINK SECURE CLOUD SESSION", fontSize = 11.sp, color = NavyBg, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
+        // --- CLOUD SYNC STATISTICS ---
         if (currentUser != null) {
             val syncStats by viewModel.syncManager.syncStats.collectAsState()
             val isSimulatedOnline by viewModel.syncManager.isSimulatedOnline.collectAsState()
             var syncInProgress by remember { mutableStateOf(false) }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, if (syncInProgress) NeonGreen else BorderColor),
-                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-                    .testTag("sync_dashboard_status_card")
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "CLOUD DATABASE SYNC DASHBOARD",
-                        fontSize = 11.sp,
-                        color = NeonGreen,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Multi-Device Real-time Indexing",
-                        fontSize = 15.sp,
-                        color = TextWhite,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("Network Mode", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                text = if (isSimulatedOnline) "Sandbox Simulation (Mock Firestore)" else "Production Live Network",
-                                fontSize = 10.sp,
-                                color = TextGray
-                            )
-                        }
-                        Switch(
-                            checked = isSimulatedOnline,
-                            onCheckedChange = { viewModel.syncManager.setSimulatedOnline(it) },
-                            modifier = Modifier.testTag("simulate_network_switch")
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HorizontalDivider(color = BorderColor)
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Last Backup Status:", fontSize = 12.sp, color = TextGray)
-                        Text(
-                            text = syncStats.lastSyncTime,
-                            fontSize = 11.sp,
-                            color = NeonGreen,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text("Sync Queue Status Details:", fontSize = 11.sp, color = TextGray, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("• Connection State:", fontSize = 12.sp, color = TextWhite)
-                        Text(
-                            text = if (isSimulatedOnline) "Sandbox Linked" else syncStats.health.name,
-                            fontSize = 11.sp,
-                            color = NeonGreen,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("• Pending snaps queued:", fontSize = 12.sp, color = TextWhite)
-                        Text(
-                            text = "${syncStats.pendingUploads} operations",
-                            fontSize = 11.sp,
-                            color = if (syncStats.pendingUploads > 0) cssVar("--accent") else TextWhite,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("• Sync Retry Failures:", fontSize = 12.sp, color = TextWhite)
-                        Text(
-                            text = "${syncStats.failedSyncs} failures",
-                            fontSize = 11.sp,
-                            color = if (syncStats.failedSyncs > 0) cssVar("--danger") else TextWhite,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (syncInProgress) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "CLOUD DATABASE SYNC",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextGray,
+                    letterSpacing = 1.sp
+                )
+                
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, if (syncInProgress) NeonGreen else BorderColor),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("sync_dashboard_status_card")
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = NeonGreen)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text("Uploading secure snapshots...", style = MaterialTheme.typography.bodySmall, color = NeonGreen)
+                            Column {
+                                Text("Database Sandbox mode", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = if (isSimulatedOnline) "Sandbox Simulation active" else "Production cloud stream",
+                                    fontSize = 11.sp,
+                                    color = TextGray
+                                )
+                            }
+                            Switch(
+                                checked = isSimulatedOnline,
+                                onCheckedChange = { viewModel.syncManager.setSimulatedOnline(it) },
+                                colors = SwitchDefaults.colors(checkedThumbColor = NeonGreen),
+                                modifier = Modifier.testTag("simulate_network_switch")
+                            )
                         }
-                    } else {
-                        Button(
-                            onClick = {
-                                syncInProgress = true
-                                coroutineScope.launch {
-                                    val success = viewModel.syncManager.syncNow(currentUserId)
-                                    syncInProgress = false
-                                    if (success) {
-                                        Toast.makeText(context, "Cloud sync complete!", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Offline mode / Sync retry queued safely.", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp)
-                                .testTag("force_sync_now_btn")
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HorizontalDivider(color = BorderColor)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // High fidelity stat layout grid
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text("TRIGGER CLOUD FORCE SYNC", fontSize = 12.sp, color = NavyBg, fontWeight = FontWeight.Bold)
+                            // Stat 1: Queue size
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(NavyBg.copy(alpha = 0.5f))
+                                    .padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Queued SNAPS", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "${syncStats.pendingUploads}",
+                                    fontSize = 15.sp,
+                                    color = if (syncStats.pendingUploads > 0) AccentOrange else TextWhite,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
+                            // Stat 2: Sync Health
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(NavyBg.copy(alpha = 0.5f))
+                                    .padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Connection", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = if (isSimulatedOnline) "SANDBOX" else syncStats.health.name,
+                                    fontSize = 12.sp,
+                                    color = NeonGreen,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+
+                            // Stat 3: Sync failures
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(NavyBg.copy(alpha = 0.5f))
+                                    .padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Retries", fontSize = 9.sp, color = TextGray, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "${syncStats.failedSyncs}",
+                                    fontSize = 15.sp,
+                                    color = if (syncStats.failedSyncs > 0) DangerRed else TextWhite,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Last backup snapshot:", fontSize = 11.sp, color = TextGray)
+                            Text(
+                                text = syncStats.lastSyncTime,
+                                fontSize = 11.sp,
+                                color = NeonGreen,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        if (syncInProgress) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = NeonGreen, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Synchronizing workspace...", fontSize = 11.sp, color = NeonGreen)
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    syncInProgress = true
+                                    coroutineScope.launch {
+                                        val success = viewModel.syncManager.syncNow(currentUserId)
+                                        syncInProgress = false
+                                        if (success) {
+                                            Toast.makeText(context, "Cloud sync complete!", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Offline mode / Sync retry queued safely.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .testTag("force_sync_now_btn")
+                            ) {
+                                Text("FORCE SYNC BACKUP NOW", fontSize = 11.sp, color = NavyBg, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // -----------------------------------------------------------------
-        // DYNAMIC AESTHETIC THEME SWAPPER
-        // -----------------------------------------------------------------
-        Text(
-            text = "CHOOSE SYSTEM THEME",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF78716C), // Stone 500
-            letterSpacing = 2.sp,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        val selectedThemeName by viewModel.selectedTheme.collectAsState()
-        // themeId, label name, Pair(Background Preview, Primary/Accent Preview)
-        val themes = listOf(
-            Triple("default", "Sophisticated Dark", Pair(Color(0xFF0C0A09), Color(0xFF10B981))),
-            Triple("oceanic_abyss", "Oceanic Abyss", Pair(Color(0xFF020617), Color(0xFF8B5CF6))),
-            Triple("forest_sage", "Forest Sage", Pair(Color(0xFF052E16), Color(0xFF22C55E))),
-            Triple("sunset_glow", "Sunset Glow", Pair(Color(0xFF1C0A10), Color(0xFFF43F5E))),
-            Triple("bright_aurora", "Light Sky Blue", Pair(Color(0xFFF0F9FF), Color(0xFF0284C7)))
-        )
-
-        val chosenThemeInfo = themes.find { it.first == selectedThemeName } ?: themes.first()
-        var themeDropdownExpanded by remember { mutableStateOf(false) }
-
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, BorderColor),
-            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp)
-        ) {
-            Box {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { themeDropdownExpanded = true }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+        // --- PREFERENCES CARD ---
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "WORKSPACE SYSTEM PREFERENCES",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextGray,
+                letterSpacing = 1.sp
+            )
+            
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    // Currency row
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Swatch Indicator
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Base Regional Currency", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                            Text("System standard preferred in Rupees (₹)", fontSize = 11.sp, color = TextGray)
+                        }
                         Row(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(chosenThemeInfo.third.first)
-                                .border(
-                                    if (chosenThemeInfo.first == "bright_aurora") BorderStroke(1.dp, Color(0xFFCBD5E1)) else BorderStroke(0.dp, Color.Transparent),
-                                    CircleShape
-                                ),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(NavyBg)
+                                .padding(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(14.dp)
-                                    .clip(CircleShape)
-                                    .background(chosenThemeInfo.third.second)
-                            )
-                        }
-
-                        Column {
-                            Text(
-                                text = chosenThemeInfo.second,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextWhite
-                            )
-                            Text(
-                                text = "Active System Theme (Click to switch)",
-                                fontSize = 11.sp,
-                                color = TextGray
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Expand theme menu dropdown",
-                        tint = TextGray
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = themeDropdownExpanded,
-                    onDismissRequest = { themeDropdownExpanded = false },
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .background(SurfaceBlue)
-                        .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
-                ) {
-                    themes.forEach { (themeId, themeLabel, colors) ->
-                        val isSelected = selectedThemeName == themeId
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    // Swatch Indicator
-                                    Row(
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                            .background(colors.first)
-                                            .border(
-                                                if (themeId == "bright_aurora") BorderStroke(0.5.dp, Color(0xFFCBD5E1)) else BorderStroke(0.dp, Color.Transparent),
-                                                CircleShape
-                                            ),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .clip(CircleShape)
-                                                .background(colors.second)
-                                        )
-                                    }
-
-                                    Text(
-                                        text = themeLabel,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) NeonGreen else TextWhite
-                                    )
-                                }
-                            },
-                            onClick = {
-                                viewModel.selectTheme(themeId)
-                                Toast.makeText(context, "Theme switched to $themeLabel!", Toast.LENGTH_SHORT).show()
-                                themeDropdownExpanded = false
-                            },
-                            modifier = Modifier.background(if (isSelected) colors.second.copy(alpha = 0.08f) else Color.Transparent)
-                        )
-                    }
-                }
-            }
-        }
-
-        // -----------------------------------------------------------------
-        // USER & PARTICIPANTS HUB
-        // -----------------------------------------------------------------
-        Text(
-            text = "MEMBERS & PARTICIPANTS WORKSPACE",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF78716C), // Stone 500
-            letterSpacing = 2.sp,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        val dbParticipants by viewModel.participants.collectAsState()
-        var newFriendName by remember { mutableStateOf("") }
-        var newFriendEmail by remember { mutableStateOf("") }
-
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, BorderColor),
-            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "ADD NEW WORKSPACE MEMBER",
-                    fontSize = 11.sp,
-                    color = NeonGreen,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                OutlinedTextField(
-                    value = newFriendName,
-                    onValueChange = { newFriendName = it },
-                    label = { Text("Workspace Name (cannot be empty)", color = TextGray) },
-                    placeholder = { Text("e.g. Johnathan", color = TextGray.copy(alpha = 0.5f)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("add_workspace_member_name_input"),
-                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                OutlinedTextField(
-                    value = newFriendEmail,
-                    onValueChange = { newFriendEmail = it },
-                    label = { Text("Workspace Email address", color = TextGray) },
-                    placeholder = { Text("e.g. johnathan@myfin.io", color = TextGray.copy(alpha = 0.5f)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("add_workspace_member_email_input"),
-                    textStyle = LocalTextStyle.current.copy(color = TextWhite),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeonGreen)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Button(
-                    onClick = {
-                        if (newFriendName.trim().isEmpty()) {
-                            Toast.makeText(context, "Please enter a valid member name", Toast.LENGTH_SHORT).show()
-                        } else {
-                            val emailVal = if (newFriendEmail.trim().isEmpty()) "${newFriendName.trim().lowercase().replace(" ", "")}@myfin.io" else newFriendEmail.trim()
-                            viewModel.addParticipantToDb(newFriendName.trim(), emailVal, false)
-                            Toast.makeText(context, "Added ${newFriendName.trim()} to your system workspace", Toast.LENGTH_SHORT).show()
-                            newFriendName = ""
-                            newFriendEmail = ""
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .testTag("add_workspace_member_submit_button")
-                ) {
-                    Text("REGISTER WORKSPACE MEMBER", fontSize = 12.sp, color = NavyBg, fontWeight = FontWeight.Bold)
-                }
-
-                if (dbParticipants.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = BorderColor)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "ACTIVE PARTICIPANTS IN WORKSPACE (${dbParticipants.size})",
-                        fontSize = 11.sp,
-                        color = TextGray,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    dbParticipants.forEach { participant ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF0F0F0F))
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (currencyMode == "INR") NeonGreen else Color.Transparent)
+                                    .clickable { currencyMode = "INR"; Toast.makeText(context, "Base Currency: INR (₹)", Toast.LENGTH_SHORT).show() }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    .testTag("currency_inr_button"),
+                                contentAlignment = Alignment.Center
                             ) {
-                                // Initials Avatar Box
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(NeonGreen.copy(alpha = 0.15f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = participant.name.take(1).uppercase(),
-                                        color = NeonGreen,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
-                                    )
-                                }
-                                
-                                Column {
-                                    Text(
-                                        text = participant.name,
-                                        color = TextWhite,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = participant.email,
-                                        color = TextGray,
-                                        fontSize = 11.sp
-                                    )
-                                }
+                                Text(
+                                    text = "INR (₹)",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (currencyMode == "INR") NavyBg else TextGray
+                                )
                             }
-                            
-                            IconButton(
-                                onClick = {
-                                    viewModel.removeParticipant(participant.id)
-                                    Toast.makeText(context, "Deleted ${participant.name} from workspace", Toast.LENGTH_SHORT).show()
-                                },
-                                modifier = Modifier.size(32.dp).testTag("delete_member_btn_${participant.name}")
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (currencyMode == "USD") NeonGreen else Color.Transparent)
+                                    .clickable { currencyMode = "USD"; Toast.makeText(context, "Base Currency: USD ($)", Toast.LENGTH_SHORT).show() }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    .testTag("currency_usd_button"),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete workspace member",
-                                    tint = DangerRed,
-                                    modifier = Modifier.size(16.dp)
+                                Text(
+                                    text = "USD ($)",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (currencyMode == "USD") NavyBg else TextGray
                                 )
                             }
                         }
                     }
-                } else {
-                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = BorderColor)
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Guard row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Smart Overspend Guard", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                            Text("Highlight budget breaches with indicator alerts", fontSize = 11.sp, color = TextGray)
+                        }
+                        Switch(
+                            checked = overspendAlerts,
+                            onCheckedChange = { overspendAlerts = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = NeonGreen),
+                            modifier = Modifier.testTag("overspend_switch")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = BorderColor)
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Precision row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("AI Smart Extraction Strictness", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                            Text("Enforce rigorous multi-field check verification", fontSize = 11.sp, color = TextGray)
+                        }
+                        Switch(
+                            checked = highPrecisionParser,
+                            onCheckedChange = { highPrecisionParser = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = NeonGreen),
+                            modifier = Modifier.testTag("precision_switch")
+                        )
+                    }
+                }
+            }
+        }
+
+        // --- NEW VISUAL THEME SELECTOR ---
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "VISUAL IDENTITY SYSTEM",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextGray,
+                letterSpacing = 1.sp
+            )
+
+            val selectedThemeName by viewModel.selectedTheme.collectAsState()
+            val themes = listOf(
+                Triple("default", "Classic Emerald", Pair(Color(0xFF0C0A09), Color(0xFF10B981))),
+                Triple("oceanic_abyss", "Amethyst Ocean", Pair(Color(0xFF020617), Color(0xFF8B5CF6))),
+                Triple("forest_sage", "Forest Sage", Pair(Color(0xFF052E16), Color(0xFF22C55E))),
+                Triple("sunset_glow", "Sunset Crimson", Pair(Color(0xFF1C0A10), Color(0xFFF43F5E))),
+                Triple("bright_aurora", "Light Sky Blue", Pair(Color(0xFFF0F9FF), Color(0xFF0284C7)))
+            )
+
+            // Horizontal Swipeable Swatches list
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                themes.forEach { (themeId, themeLabel, colors) ->
+                    val isSelected = selectedThemeName == themeId
+                    val borderC = if (isSelected) NeonGreen else BorderColor
+                    val isThemeLight = themeId == "bright_aurora"
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(2.dp, borderC),
+                        colors = CardDefaults.cardColors(containerColor = if (isSelected) SurfaceBlue else SurfaceBlue.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .width(136.dp)
+                            .clickable {
+                                viewModel.selectTheme(themeId)
+                                Toast.makeText(context, "$themeLabel Applied!", Toast.LENGTH_SHORT).show()
+                            }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Modern dual color circular swatch
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.first)
+                                    .border(
+                                        if (isThemeLight) BorderStroke(1.dp, Color(0xFFCBD5E1)) else BorderStroke(0.dp, Color.Transparent),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.second)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = themeLabel,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) NeonGreen else TextWhite,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (isSelected) "ACTIVE" else "SELECT",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) NeonGreen else TextGray,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- REWIRED SHARED MEMBERS SPACE ---
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "SHARED WORKSPACE CONTACTS",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextGray,
+                letterSpacing = 1.sp
+            )
+
+            val dbParticipants by viewModel.participants.collectAsState()
+            var newFriendName by remember { mutableStateOf("") }
+            var newFriendEmail by remember { mutableStateOf("") }
+
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, BorderColor),
+                colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "No custom members added. Add travel, housemate, or office group members to compute group expense splits instantly!",
-                        fontSize = 11.sp,
-                        color = TextGray,
-                        lineHeight = 16.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                        text = "REGISTER NEW MEMBER PROFILE",
+                        fontSize = 10.sp,
+                        color = NeonGreen,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
                     )
-                }
-            }
-        }
-
-        // -----------------------------------------------------------------
-        // SYSTEM PREFERENCES & CONTROLS
-        // -----------------------------------------------------------------
-        Text(
-            text = "SYSTEM CONFIGURATOR",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF78716C), // Stone 500
-            letterSpacing = 2.sp
-        )
-        Text(
-            text = "Settings, Database & Tools",
-            fontSize = 24.sp,
-            fontFamily = FontFamily.Serif,
-            color = TextWhite,
-            fontWeight = FontWeight.Light,
-            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        // Preferences Card
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(1.dp, BorderColor),
-            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "APP USER PREFERENCES",
-                    fontSize = 11.sp,
-                    color = NeonGreen,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Option 1: Currency Preference Selection
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Regional Base Currency", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
-                        Text("Active formatting in Indian Rupee (₹)", fontSize = 11.sp, color = TextGray)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    OutlinedTextField(
+                        value = newFriendName,
+                        onValueChange = { newFriendName = it },
+                        label = { Text("Display Name", fontSize = 11.sp, color = TextGray) },
+                        placeholder = { Text("e.g. Rachel", fontSize = 11.sp, color = TextGray.copy(alpha = 0.4f)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("add_workspace_member_name_input"),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite, fontSize = 13.sp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonGreen,
+                            unfocusedBorderColor = BorderColor
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    OutlinedTextField(
+                        value = newFriendEmail,
+                        onValueChange = { newFriendEmail = it },
+                        label = { Text("Optional Email Address", fontSize = 11.sp, color = TextGray) },
+                        placeholder = { Text("e.g. rachel@work.io", fontSize = 11.sp, color = TextGray.copy(alpha = 0.4f)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("add_workspace_member_email_input"),
+                        textStyle = LocalTextStyle.current.copy(color = TextWhite, fontSize = 13.sp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NeonGreen,
+                            unfocusedBorderColor = BorderColor
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Button(
+                        onClick = {
+                            if (newFriendName.trim().isEmpty()) {
+                                Toast.makeText(context, "Member name is required", Toast.LENGTH_SHORT).show()
+                            } else {
+                                val emailVal = if (newFriendEmail.trim().isEmpty()) "${newFriendName.trim().lowercase().replace(" ", "")}@myfin.io" else newFriendEmail.trim()
+                                viewModel.addParticipantToDb(newFriendName.trim(), emailVal, false)
+                                Toast.makeText(context, "Added ${newFriendName.trim()} to split ledger database.", Toast.LENGTH_SHORT).show()
+                                newFriendName = ""
+                                newFriendEmail = ""
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonGreen),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .testTag("add_workspace_member_submit_button")
+                    ) {
+                        Text("SAVE MEMBER REGISTER", fontSize = 11.sp, color = NavyBg, fontWeight = FontWeight.Bold)
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Button(
-                            onClick = { currencyMode = "INR"; Toast.makeText(context, "Base Currency: INR (₹)", Toast.LENGTH_SHORT).show() },
-                            colors = ButtonDefaults.buttonColors(containerColor = if (currencyMode == "INR") NeonGreen else BorderColor),
-                            shape = RoundedCornerShape(6.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            modifier = Modifier.height(28.dp).testTag("currency_inr_button")
-                        ) {
-                            Text("INR (₹)", fontSize = 11.sp, color = if (currencyMode == "INR") NavyBg else TextWhite, fontWeight = FontWeight.Bold)
+
+                    if (dbParticipants.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(color = BorderColor)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "SHARED WORKSPACE SUBSCRIBERS (${dbParticipants.size})",
+                            fontSize = 10.sp,
+                            color = TextGray,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            dbParticipants.forEach { participant ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (LocalCssThemeVariables.current.isLight) Color(0xFFF1F5F9) else Color(0xFF0F0F0F))
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .clip(CircleShape)
+                                                .background(NeonGreen.copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = participant.name.take(1).uppercase(),
+                                                color = NeonGreen,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.sp
+                                            )
+                                        }
+                                        Column {
+                                            Text(
+                                                text = participant.name,
+                                                color = TextWhite,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = participant.email,
+                                                color = TextGray,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                    
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.removeParticipant(participant.id)
+                                            Toast.makeText(context, "Member deleted.", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(28.dp).testTag("delete_member_btn_${participant.name}")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete workspace member",
+                                            tint = DangerRed.copy(alpha = 0.8f),
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
-                        Button(
-                            onClick = { currencyMode = "USD"; Toast.makeText(context, "Base Currency: USD ($)", Toast.LENGTH_SHORT).show() },
-                            colors = ButtonDefaults.buttonColors(containerColor = if (currencyMode == "USD") NeonGreen else BorderColor),
-                            shape = RoundedCornerShape(6.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            modifier = Modifier.height(28.dp).testTag("currency_usd_button")
-                        ) {
-                            Text("USD ($)", fontSize = 11.sp, color = if (currencyMode == "USD") NavyBg else TextWhite, fontWeight = FontWeight.Bold)
-                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "No additional ledger contacts registered. Add housemates or travel members to activate group billing splits.",
+                            fontSize = 11.sp,
+                            color = TextGray,
+                            lineHeight = 15.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                        )
                     }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = BorderColor)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Option 2: Overspend alerts Switch
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Smart Overspend Guard", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
-                        Text("Flag transaction limits with red indicators", fontSize = 11.sp, color = TextGray)
-                    }
-                    Switch(
-                        checked = overspendAlerts,
-                        onCheckedChange = { overspendAlerts = it },
-                        colors = SwitchDefaults.colors(checkedThumbColor = NeonGreen),
-                        modifier = Modifier.testTag("overspend_switch")
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = BorderColor)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Option 3: Precision Toggle Switch
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("AI Smart Extraction Strictness", fontSize = 13.sp, color = TextWhite, fontWeight = FontWeight.Bold)
-                        Text("Apply rigorous multi-field context evaluation", fontSize = 11.sp, color = TextGray)
-                    }
-                    Switch(
-                        checked = highPrecisionParser,
-                        onCheckedChange = { highPrecisionParser = it },
-                        colors = SwitchDefaults.colors(checkedThumbColor = NeonGreen),
-                        modifier = Modifier.testTag("precision_switch")
-                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Technical System Diagnostics
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, BorderColor),
-            colors = CardDefaults.cardColors(containerColor = SurfaceBlue),
-            modifier = Modifier.fillMaxWidth()
+        // --- PREMIUM FOOTER CREDS & DIAGNOSTICS ---
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "🛠️ SYSTEM DIAGNOSTICS",
-                    fontSize = 11.sp,
-                    color = TextGray,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("SQLite Engines: Active (Room Persistence Library)", fontSize = 12.sp, color = TextWhite)
-                Text("AI Parser: Google Gemini-Flash Web Orchestration (Model 3.5)", fontSize = 12.sp, color = TextWhite)
-                Text("Telemetry Client: Operational on DeX / Foldable Adaptive layout", fontSize = 12.sp, color = TextWhite)
-                Text("Application Version: MYFin Core v2.4.2", fontSize = 12.sp, color = NeonGreen)
-            }
+            Text(
+                text = "MYFin Core v2.4.2 — Built dynamically",
+                fontSize = 10.sp,
+                color = TextGray,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "Engine: Room DB SQLite • AI Parser: Gemini Flash 3.5",
+                fontSize = 9.sp,
+                color = TextGray.copy(alpha = 0.6f),
+                fontFamily = FontFamily.Monospace
+            )
         }
-
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 

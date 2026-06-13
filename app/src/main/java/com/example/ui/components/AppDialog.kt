@@ -22,6 +22,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.example.ui.theme.*
 
 @Composable
@@ -32,9 +42,32 @@ fun AppDialog(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
+        var isAnimated by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            isAnimated = true
+        }
+        val scale by animateFloatAsState(
+            targetValue = if (isAnimated) 1.0f else 0.94f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            ),
+            label = "dialog_scale"
+        )
+        val alpha by animateFloatAsState(
+            targetValue = if (isAnimated) 1.0f else 0.0f,
+            animationSpec = tween(150),
+            label = "dialog_alpha"
+        )
+
         Surface(
             modifier = modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    this.alpha = alpha
+                }
                 .clip(AppShapes.DialogShape)
                 .background(SurfaceBlue)
                 .border(AppBorder.Thin, BorderColor, AppShapes.DialogShape),

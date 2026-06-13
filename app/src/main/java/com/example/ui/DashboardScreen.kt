@@ -675,13 +675,17 @@ fun FinancialSnapshotHero(
             }
 
             // Central Net Balance (Typography dominates visual weight)
-            Text(
-                text = currencyFormatter.format(data.netAvailableMoney),
-                fontSize = 38.sp,
-                fontWeight = FontWeight.Bold,
-                color = textW,
-                modifier = Modifier.padding(vertical = 12.dp)
-            )
+            Box(modifier = Modifier.padding(vertical = 12.dp)) {
+                com.example.ui.motion.AnimatedAmountText(
+                    amount = data.netAvailableMoney,
+                    style = androidx.compose.ui.text.TextStyle(
+                        fontSize = 38.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textW
+                    ),
+                    color = textW
+                )
+            }
 
             HorizontalDivider(color = borderC.copy(alpha = 0.4f), thickness = 1.dp, modifier = Modifier.padding(bottom = 16.dp))
 
@@ -700,10 +704,13 @@ fun FinancialSnapshotHero(
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = currencyFormatter.format(data.currentMonthIncome),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
+                    com.example.ui.motion.AnimatedAmountText(
+                        amount = data.currentMonthIncome,
+                        style = androidx.compose.ui.text.TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = textW
+                        ),
                         color = textW
                     )
                     Spacer(modifier = Modifier.height(2.dp))
@@ -732,10 +739,13 @@ fun FinancialSnapshotHero(
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = currencyFormatter.format(data.currentMonthExpenses),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
+                    com.example.ui.motion.AnimatedAmountText(
+                        amount = data.currentMonthExpenses,
+                        style = androidx.compose.ui.text.TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = textW
+                        ),
                         color = textW
                     )
                     Spacer(modifier = Modifier.height(2.dp))
@@ -771,10 +781,13 @@ fun FinancialSnapshotHero(
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = currencyFormatter.format(data.currentSavings),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
+                    com.example.ui.motion.AnimatedAmountText(
+                        amount = data.currentSavings,
+                        style = androidx.compose.ui.text.TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = textW
+                        ),
                         color = textW
                     )
                     Spacer(modifier = Modifier.height(2.dp))

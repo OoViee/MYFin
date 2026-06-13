@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.ui.theme.*
+import com.example.ui.motion.tactileCard
 
 @Composable
 fun AppCard(
@@ -30,7 +31,7 @@ fun AppCard(
 ) {
     if (onClick != null) {
         Card(
-            modifier = modifier.clickable(onClick = onClick),
+            modifier = modifier.tactileCard(onClick = onClick),
             shape = shape,
             colors = CardDefaults.cardColors(
                 containerColor = containerColor,

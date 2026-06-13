@@ -21,6 +21,9 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
+import com.example.ui.motion.tactileListItem
 
 @Composable
 fun AppTabRow(
@@ -64,19 +68,31 @@ fun AppTabRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             tabs.forEachIndexed { index, tabTitle ->
+                val isSelected = index == selectedTabIndex
+                val tabBg by animateColorAsState(
+                    targetValue = if (isSelected) SurfaceBlue else Color.Transparent,
+                    animationSpec = tween(200),
+                    label = "row_tab_bg"
+                )
+                val tabTextColor by animateColorAsState(
+                    targetValue = if (isSelected) NeonGreen else TextGray,
+                    animationSpec = tween(200),
+                    label = "row_tab_text"
+                )
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .clip(AppShapes.TabShape)
-                        .background(if (index == selectedTabIndex) SurfaceBlue else Color.Transparent)
-                        .clickable { onTabSelected(index) }
+                        .background(tabBg)
+                        .tactileListItem { onTabSelected(index) }
                         .padding(vertical = AppSpacing.Space12),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = tabTitle,
-                        color = if (index == selectedTabIndex) NeonGreen else TextGray,
-                        fontWeight = if (index == selectedTabIndex) FontWeight.Bold else FontWeight.Medium,
+                        color = tabTextColor,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         fontSize = 13.sp
                     )
                 }
@@ -93,15 +109,22 @@ fun AppTab(
     modifier: Modifier = Modifier,
     badgeCount: Int? = null
 ) {
-    val bg = if (selected) NeonGreen.copy(alpha = 0.15f) else SurfaceBlue
-    val textColor = if (selected) NeonGreen else TextGray
-    val strokeColor = if (selected) NeonGreen else BorderColor
+    val bgAnim by animateColorAsState(
+        targetValue = if (selected) NeonGreen.copy(alpha = 0.15f) else SurfaceBlue,
+        animationSpec = tween(200),
+        label = "tab_bg"
+    )
+    val textColorAnim by animateColorAsState(
+        targetValue = if (selected) NeonGreen else TextGray,
+        animationSpec = tween(200),
+        label = "tab_text"
+    )
     
     Box(
         modifier = modifier
             .clip(AppShapes.TabShape)
-            .background(bg)
-            .clickable(onClick = onClick)
+            .background(bgAnim)
+            .tactileListItem(onClick = onClick)
             .padding(horizontal = AppSpacing.Space16, vertical = AppSpacing.Space8),
         contentAlignment = Alignment.Center
     ) {
@@ -110,7 +133,7 @@ fun AppTab(
         ) {
             Text(
                 text = title,
-                color = textColor,
+                color = textColorAnim,
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 13.sp

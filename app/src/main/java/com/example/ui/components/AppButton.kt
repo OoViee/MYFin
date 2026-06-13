@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
+import com.example.ui.motion.tactileButton
 
 @Composable
 fun AppButton(
@@ -36,7 +37,9 @@ fun AppButton(
     
     Button(
         onClick = onClick,
-        modifier = buttonModifier.height(48.dp),
+        modifier = buttonModifier
+            .height(48.dp)
+            .tactileButton(enabled = enabled && !isLoading),
         enabled = enabled && !isLoading,
         shape = AppShapes.ButtonShape,
         colors = ButtonDefaults.buttonColors(
@@ -79,7 +82,9 @@ fun AppTextButton(
 ) {
     TextButton(
         onClick = onClick,
-        modifier = modifier.height(40.dp),
+        modifier = modifier
+            .height(40.dp)
+            .tactileButton(enabled = enabled),
         enabled = enabled,
         shape = AppShapes.ButtonShape,
         colors = ButtonDefaults.textButtonColors(

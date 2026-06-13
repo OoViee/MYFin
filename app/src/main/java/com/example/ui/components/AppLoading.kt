@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
+import com.example.ui.motion.shimmer
 
 @Composable
 fun AppLoading(
@@ -73,6 +74,21 @@ fun AppSkeletonCard(
             .fillMaxWidth()
             .height(height.dp)
             .clip(AppShapes.CardShape)
-            .background(SurfaceBlue.copy(alpha = 0.5f))
+            .shimmer()
     )
+}
+
+@Composable
+fun AppSkeletonList(
+    modifier: Modifier = Modifier,
+    itemCount: Int = 3
+) {
+    Column(modifier = modifier) {
+        repeat(itemCount) { index ->
+            AppSkeletonCard(
+                modifier = Modifier.padding(bottom = if (index == itemCount - 1) 0.dp else AppSpacing.Space12),
+                height = 72f
+            )
+        }
+    }
 }
